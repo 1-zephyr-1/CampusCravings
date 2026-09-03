@@ -1,26 +1,147 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-cream: #FDF6EC;
+  --color-cream-dark: #1A1410;
+  --color-surface: #FFF9F0;
+  --color-surface-dark: #2A2018;
+  --color-tomato: #D4442A;
+  --color-tomato-hover: #B8321F;
+  --color-tomato-light: #F2D4D0;
+  --color-turmeric: #F5A623;
+  --color-turmeric-light: #FFF0D4;
+  --color-espresso: #2D1B0E;
+  --color-bark: #8B7355;
+  --color-sand: #E8DDD0;
+  --color-herb: #4A7C59;
+  --color-chili: #C1292E;
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-jetbrains);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+:root {
+  --background: #FDF6EC;
+  --foreground: #2D1B0E;
+}
+
+.dark {
+  --background: #1A1410;
+  --foreground: #FDF6EC;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #E8DDD0;
+  border-radius: 3px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #4A3D30;
+}
+
+/* Custom animations */
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
+}
+
+/* Sold out stamp effect */
+.stamp-sold-out {
+  transform: rotate(-12deg);
+  border: 3px solid #C1292E;
+  color: #C1292E;
+  padding: 2px 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.85;
+}
+
+/* Price tag style */
+.price-tag {
+  font-variant-numeric: tabular-nums;
+  border: 1px dashed #E8DDD0;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.dark .price-tag {
+  border-color: #4A3D30;
+}
+
+/* Category chip active state */
+.chip-active {
+  background-color: #D4442A;
+  color: white;
+}
+
+.chip-inactive {
+  background-color: #FFF9F0;
+  color: #2D1B0E;
+  border: 1px solid #E8DDD0;
+}
+
+.dark .chip-inactive {
+  background-color: #2A2018;
+  color: #FDF6EC;
+  border-color: #4A3D30;
+}
+
+/* Accent line on left */
+.accent-line {
+  border-left: 3px solid #D4442A;
+  padding-left: 12px;
+}
+
+/* Order status stepper */
+.step-connector {
+  width: 2px;
+  background: #E8DDD0;
+  margin-left: 11px;
+}
+
+.step-connector.active {
+  background: #D4442A;
+}
+
+.dark .step-connector {
+  background: #4A3D30;
+}
+
+.dark .step-connector.active {
+  background: #D4442A;
 }
