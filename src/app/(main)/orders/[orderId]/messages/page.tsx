@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { ChevronLeft, MessageSquare, Mail } from "lucide-react";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { OrderThread } from "@/components/messages/order-thread";
 
 export const metadata: Metadata = {
   title: "Messages · CampusCravings",
@@ -10,11 +10,12 @@ export const metadata: Metadata = {
 };
 
 /**
- * Buyer-side messaging thread for an order.
+ * Buyer-side realtime message thread for an order.
  *
- * Stub for Phase 1 / Phase 2 — full realtime chat (Supabase Realtime over a
- * `messages` table) is tracked as Phase 3. Until then, the page shows the
- * order context and a real mailto: link so the buyer can reach the seller.
+ * Server component: fetches the order context, authorizes (only the
+ * customer on the order may view), then renders the shared
+ * `<OrderThread>` client component which handles realtime, optimistic
+ * send, and the composer.
  *
  * Symmetric seller-side copy lives at
  * `src/app/(seller)/seller/orders/[orderId]/messages/page.tsx`.
@@ -27,142 +28,49 @@ export default async function OrderMessagesPage({
   const { orderId } = await params;
   const supabase = await createClient();
 
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/");
+
   const { data: order } = await supabase
     .from("orders")
     .select(
-      "id, store_id, total_price, pickup_time, notes, store:stores(name, user_id, profile:profiles!stores_user_id_fkey(email, full_name))"
+      "id, customer_id, store_id, store:stores(name, user_id, profile:profiles!stores_user_id_fkey(email, full_name))"
     )
     .eq("id", orderId)
     .single();
 
-  const seller = order?.store as
-    | {
-        name?: string;
-        profile?: { email?: string; full_name?: string } | null;
-      }
-    | null
-    | undefined;
+  if (!order) redirect("/orders");
+  if (order.customer_id !== user.id) redirect("/orders");
 
-  const sellerEmail = seller?.profile?.email;
-  const sellerName = seller?.profile?.full_name || seller?.name || "the seller";
+  type StoreWithProfile = {
+    name?: string;
+    profile?: { email?: string; full_name?: string } | null;
+  } | null;
+  const store = order.store as StoreWithProfile;
+  const counterpartName =
+    store?.profile?.full_name?.trim() ||
+    store?.name ||
+    "the seller";
 
-  const mailSubject = encodeURIComponent(
-    `CampusCravings order #${orderId.slice(0, 8)}`
-  );
-  const mailBody = encodeURIComponent(
-    [
-      `Hi ${sellerName},`,
-      "",
-      "Reaching out about my CampusCravings order.",
-      "",
-      `Order ID: ${orderId}`,
-      `Total: ৳${order?.total_price ?? "?"}`,
-      `Pickup time: ${order?.pickup_time ?? "(not set)"}`,
-      order?.notes ? `Notes: ${order.notes}` : "",
-      "",
-      "Thanks!",
-    ]
-      .filter(Boolean)
-      .join("\n")
-  );
-
-  const mailtoHref = sellerEmail
-    ? `mailto:${sellerEmail}?subject=${mailSubject}&body=${mailBody}`
-    : null;
+  // Optional offline fallback: real `mailto:` link to the seller.
+  const sellerEmail = store?.profile?.email;
+  const fallbackHref = sellerEmail
+    ? `mailto:${sellerEmail}?subject=${encodeURIComponent(
+        `CampusCravings order #${orderId.slice(0, 8)}`
+      )}`
+    : undefined;
 
   return (
-    <main
-      id="main-content"
-      tabIndex={-1}
-      className="max-w-2xl mx-auto px-4 md:px-6 py-4 md:py-8"
-    >
-      <Link
-        href={`/orders/${orderId}`}
-        className="inline-flex items-center gap-1 text-sm text-[var(--text-muted)] hover:text-[var(--text)] mb-4 transition-colors motion-reduce:transition-none"
-      >
-        <ChevronLeft size={16} aria-hidden="true" />
-        Back to order
-      </Link>
-
-      <div className="text-center mb-6">
-        <div
-          aria-hidden="true"
-          className="w-14 h-14 rounded-2xl bg-[var(--primary-soft)] text-[var(--primary)] flex items-center justify-center mx-auto mb-4"
-        >
-          <MessageSquare size={24} />
-        </div>
-        <h1 className="text-2xl font-bold text-[var(--text)]">
-          Direct messages coming soon
-        </h1>
-        <p className="mt-2 text-sm text-[var(--text-muted)] max-w-md mx-auto leading-relaxed">
-          We&apos;re building realtime chat between buyers and sellers. In the
-          meantime, you can email {sellerName} directly using the button below
-          — they&apos;ll see your pickup time and order details in their
-          dashboard.
-        </p>
-      </div>
-
-      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 space-y-4">
-        <h2 className="text-sm font-semibold text-[var(--text)]">
-          What you can do today
-        </h2>
-        <ul className="space-y-2 text-sm text-[var(--text-muted)]">
-          <li className="flex items-start gap-2">
-            <span className="text-[var(--success)] mt-0.5" aria-hidden="true">
-              ✓
-            </span>
-            Add pickup-time or special-request notes{" "}
-            <em className="not-italic text-[var(--text-subtle)]">
-              (before the seller accepts)
-            </em>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-[var(--success)] mt-0.5" aria-hidden="true">
-              ✓
-            </span>
-            Cancel your order if plans change
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-[var(--success)] mt-0.5" aria-hidden="true">
-              ✓
-            </span>
-            Rate and review after pickup
-          </li>
-        </ul>
-      </div>
-
-      <div className="mt-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
-        {mailtoHref ? (
-          <a
-            href={mailtoHref}
-            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[var(--primary)] text-white rounded-full text-sm font-semibold hover:bg-[var(--primary-hover)] transition-colors motion-reduce:transition-none"
-          >
-            <Mail size={14} aria-hidden="true" />
-            Email {sellerName}
-          </a>
-        ) : (
-          <span className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[var(--primary)]/60 text-white rounded-full text-sm font-semibold cursor-not-allowed">
-            <Mail size={14} aria-hidden="true" />
-            Seller email unavailable
-          </span>
-        )}
-        <Link
-          href={`/orders/${orderId}`}
-          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[var(--surface)] text-[var(--text)] border border-[var(--border)] rounded-full text-sm font-semibold hover:border-[var(--primary)] hover:text-[var(--primary)] transition-colors motion-reduce:transition-none"
-        >
-          View order details
-        </Link>
-        <Link
-          href="/orders"
-          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[var(--surface)] text-[var(--text)] border border-[var(--border)] rounded-full text-sm font-semibold hover:border-[var(--primary)] hover:text-[var(--primary)] transition-colors motion-reduce:transition-none"
-        >
-          All my orders
-        </Link>
-      </div>
-
-      <p className="mt-6 text-[11px] text-center text-[var(--text-subtle)]">
-        Order ID: <code className="font-mono">{orderId.slice(0, 8)}</code>
-      </p>
-    </main>
+    <OrderThread
+      orderId={order.id}
+      viewerRole="customer"
+      counterpartName={counterpartName}
+      backHref={`/orders/${orderId}`}
+      fallback={
+        fallbackHref
+          ? { label: `Email ${counterpartName} instead`, href: fallbackHref }
+          : undefined
+      }
+    />
   );
 }
