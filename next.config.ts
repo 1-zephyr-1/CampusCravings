@@ -35,9 +35,7 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   compress: true,
   typescript: {
-    // Pre-existing TS errors in unrelated files are blocking bundle output.
-    // TODO: remove once feed-page-client / item-detail-client are fixed.
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   experimental: {
     optimizePackageImports: ["lucide-react", "date-fns"],

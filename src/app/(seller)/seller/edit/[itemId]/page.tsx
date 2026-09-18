@@ -262,7 +262,7 @@ export default function EditItemPage({
   // Build a synthetic FoodItem for the live preview using the current form
   // state, including any newly uploaded photo previews.
   const allPhotoUrls = [...existingUrls, ...previews];
-  const previewItem: FoodItem = item
+  const previewItem: FoodItem | null = item
     ? {
         ...item,
         name: form.name,
