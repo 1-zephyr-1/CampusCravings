@@ -16,7 +16,10 @@ import {
   EyeOff,
   Package,
   Utensils,
+  Store as StoreIcon,
 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 
 export default function SellerItemsPage() {
@@ -54,7 +57,7 @@ export default function SellerItemsPage() {
     }
 
     init();
-  }, [profile]);
+  }, [profile, supabase]);
 
   async function toggleSoldOut(item: FoodItem) {
     await supabase
@@ -87,11 +90,7 @@ export default function SellerItemsPage() {
       }
     }
 
-    await supabase
-      .from("item_categories")
-      .delete()
-      .eq("item_id", itemId);
-
+    await supabase.from("item_categories").delete().eq("item_id", itemId);
     await supabase.from("food_items").delete().eq("id", itemId);
 
     setItems((prev) => prev.filter((i) => i.id !== itemId));
@@ -100,17 +99,14 @@ export default function SellerItemsPage() {
 
   if (!store) {
     return (
-      <div className="max-w-3xl mx-auto px-4 md:px-6 py-16 text-center">
-        <Package size={48} className="mx-auto mb-4 text-gray-300" />
-        <p className="text-sm text-gray-500 mb-4">
-          Set up your store first to manage items.
-        </p>
-        <Link
-          href="/seller/storefront"
-          className="inline-flex px-4 py-2 bg-red-600 text-white rounded-full text-sm font-semibold"
-        >
-          Set Up Store
-        </Link>
+      <div className="max-w-3xl mx-auto px-4 md:px-6 py-16">
+        <EmptyState
+          icon={StoreIcon}
+          title="Set up your store first"
+          message="Create your storefront so buyers can find you on the feed."
+          ctaLabel="Set up store"
+          ctaHref="/seller/storefront"
+        />
       </div>
     );
   }
@@ -118,38 +114,33 @@ export default function SellerItemsPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 md:px-6 py-4">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-bold text-gray-900">
-          Items
-        </h1>
+        <h1 className="text-xl font-bold text-[var(--text)]">Items</h1>
         <Link
           href="/seller/new-item"
-          className="flex items-center gap-1.5 px-4 py-2 bg-red-600 text-white rounded-full text-xs font-semibold hover:bg-red-700 transition-colors"
+          className="flex items-center gap-1.5 px-4 py-2 bg-[var(--primary)] text-white rounded-full text-xs font-semibold hover:bg-[var(--primary-hover)] transition-colors motion-reduce:transition-none"
         >
-          <Plus size={14} />
-          New Item
+          <Plus size={14} aria-hidden="true" />
+          New item
         </Link>
       </div>
 
       {loading ? (
-        <div className="space-y-3">
+        <div className="space-y-2" aria-label="Loading items" role="status">
           {[...Array(3)].map((_, i) => (
-            <div
-              key={i}
-              className="h-20 bg-gray-200 rounded-xl animate-pulse"
-            />
+            <Skeleton key={i} className="h-20 rounded-xl" />
           ))}
         </div>
       ) : items.length > 0 ? (
-        <div className="space-y-2">
+        <ul role="list" className="space-y-2">
           {items.map((item) => (
-            <div
+            <li
               key={item.id}
               className={clsx(
-                "flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-200 transition-opacity",
+                "flex items-center gap-3 p-3 bg-[var(--surface)] rounded-xl border border-[var(--border)] transition-opacity motion-reduce:transition-none",
                 item.is_sold_out && "opacity-60"
               )}
             >
-              <div className="w-14 h-14 shrink-0 rounded-lg overflow-hidden bg-gray-100">
+              <div className="w-14 h-14 shrink-0 rounded-lg overflow-hidden bg-[var(--background)]">
                 {item.photo_urls?.[0] ? (
                   <Image
                     src={item.photo_urls[0]}
@@ -159,28 +150,31 @@ export default function SellerItemsPage() {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Utensils size={20} className="text-gray-400" />
+                  <div
+                    aria-hidden="true"
+                    className="w-full h-full flex items-center justify-center"
+                  >
+                    <Utensils size={20} className="text-[var(--text-subtle)]" />
                   </div>
                 )}
               </div>
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium text-gray-900 truncate">
+                  <p className="text-sm font-medium text-[var(--text)] truncate">
                     {item.name}
                   </p>
                   {item.is_sold_out && (
-                    <span className="px-1.5 py-0.5 bg-red-100 text-red-600 text-[10px] font-semibold rounded-full uppercase">
-                      Sold Out
+                    <span className="px-1.5 py-0.5 bg-[var(--primary-soft)] text-[var(--primary)] text-[10px] font-semibold rounded-full uppercase">
+                      Sold out
                     </span>
                   )}
                 </div>
                 <div className="flex items-center gap-3 mt-0.5">
-                  <span className="price-tag text-xs font-mono text-red-600 font-bold">
+                  <span className="text-xs font-mono text-[var(--primary)] font-bold">
                     ৳{item.price.toFixed(0)}
                   </span>
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-[var(--text-muted)]">
                     Qty: {item.quantity}
                   </span>
                 </div>
@@ -188,60 +182,64 @@ export default function SellerItemsPage() {
 
               <div className="flex items-center gap-1 shrink-0">
                 <button
+                  type="button"
                   onClick={() => toggleSoldOut(item)}
+                  aria-label={
+                    item.is_sold_out ? "Mark available" : "Mark sold out"
+                  }
+                  aria-pressed={item.is_sold_out}
                   className={clsx(
-                    "p-2 rounded-lg transition-colors",
+                    "p-2 rounded-lg transition-colors motion-reduce:transition-none",
                     item.is_sold_out
-                      ? "text-green-600 hover:bg-green-50"
-                      : "text-gray-500 hover:bg-gray-100"
+                      ? "text-[var(--success)] hover:bg-[var(--success)]/10"
+                      : "text-[var(--text-muted)] hover:bg-[var(--background)]"
                   )}
-                  title={item.is_sold_out ? "Mark available" : "Mark sold out"}
                 >
                   {item.is_sold_out ? (
-                    <Eye size={16} />
+                    <Eye size={16} aria-hidden="true" />
                   ) : (
-                    <EyeOff size={16} />
+                    <EyeOff size={16} aria-hidden="true" />
                   )}
                 </button>
                 <Link
                   href={`/seller/edit/${item.id}`}
-                  className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
-                  title="Edit item"
+                  aria-label={`Edit ${item.name}`}
+                  className="p-2 rounded-lg text-[var(--text-muted)] hover:bg-[var(--background)] transition-colors motion-reduce:transition-none"
                 >
-                  <Pencil size={16} />
+                  <Pencil size={16} aria-hidden="true" />
                 </Link>
                 <button
+                  type="button"
                   onClick={() => setDeleteTarget(item.id)}
                   disabled={deletingId === item.id}
-                  className="p-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
-                  title="Delete item"
+                  aria-label={`Delete ${item.name}`}
+                  className="p-2 rounded-lg text-[var(--danger)] hover:bg-[var(--danger)]/10 transition-colors motion-reduce:transition-none disabled:opacity-50"
                 >
                   {deletingId === item.id ? (
-                    <div className="h-4 w-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+                    <span
+                      aria-hidden="true"
+                      className="block h-4 w-4 border-2 border-[var(--danger)] border-t-transparent rounded-full animate-spin"
+                    />
                   ) : (
-                    <Trash2 size={16} />
+                    <Trash2 size={16} aria-hidden="true" />
                   )}
                 </button>
               </div>
-            </div>
+            </li>
           ))}
-        </div>
+        </ul>
       ) : (
-        <div className="text-center py-16">
-          <Package size={32} className="mx-auto mb-3 text-gray-300" />
-          <p className="text-sm text-gray-500 mb-3">No items yet</p>
-          <Link
-            href="/seller/new-item"
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-red-600 text-white rounded-full text-sm font-semibold"
-          >
-            <Plus size={14} />
-            Create Your First Item
-          </Link>
-        </div>
+        <EmptyState
+          icon={Package}
+          title="No items yet"
+          message="Add your first dish so buyers can pre-order from your store."
+          ctaLabel="Create your first item"
+          ctaHref="/seller/new-item"
+        />
       )}
       <ConfirmModal
         open={deleteTarget !== null}
-        title="Delete Item"
+        title="Delete item"
         message="Are you sure you want to delete this item? This action cannot be undone."
         confirmLabel="Delete"
         danger

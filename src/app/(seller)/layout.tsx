@@ -19,8 +19,12 @@ function SellerGuard({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 border-[3px] border-red-600 border-t-transparent rounded-full animate-spin" />
+      <div
+        role="status"
+        aria-label="Loading"
+        className="flex min-h-screen items-center justify-center"
+      >
+        <span className="h-8 w-8 border-[3px] border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -28,7 +32,9 @@ function SellerGuard({ children }: { children: React.ReactNode }) {
   if (profile?.is_banned) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center">
-        <p className="text-sm text-red-600">Your account has been banned. Contact support.</p>
+        <p className="text-sm text-[var(--danger)]">
+          Your account has been banned. Contact support.
+        </p>
       </div>
     );
   }

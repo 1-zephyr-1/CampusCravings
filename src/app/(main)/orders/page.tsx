@@ -8,6 +8,8 @@ import { ORDER_STATUSES } from "@/lib/constants";
 import { format } from "date-fns";
 import Link from "next/link";
 import { clsx } from "clsx";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 import { ChevronRight, Clock, Package } from "lucide-react";
 
 export default function OrdersPage() {
@@ -56,7 +58,7 @@ export default function OrdersPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user, supabase]);
 
   const activeOrders = orders.filter((o) =>
     ["requested", "accepted", "ready"].includes(o.status)
@@ -69,30 +71,40 @@ export default function OrdersPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 md:px-6 py-4">
-      <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50 mb-4">
+      <h1 className="text-xl font-bold text-[var(--text)] mb-4">
         My Orders
       </h1>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-white dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700 mb-4">
+      <div
+        role="tablist"
+        aria-label="Order status"
+        className="flex gap-1 bg-[var(--surface)] rounded-lg p-1 border border-[var(--border)] mb-4"
+      >
         <button
+          type="button"
+          role="tab"
+          aria-selected={tab === "active"}
           onClick={() => setTab("active")}
           className={clsx(
-            "flex-1 py-1.5 rounded-md text-xs font-medium transition-colors",
+            "flex-1 py-1.5 rounded-md text-xs font-medium transition-colors motion-reduce:transition-none",
             tab === "active"
-              ? "bg-red-600 text-white"
-              : "text-gray-500 hover:text-gray-900"
+              ? "bg-[var(--primary)] text-white"
+              : "text-[var(--text-muted)] hover:text-[var(--text)]"
           )}
         >
           Active ({activeOrders.length})
         </button>
         <button
+          type="button"
+          role="tab"
+          aria-selected={tab === "completed"}
           onClick={() => setTab("completed")}
           className={clsx(
-            "flex-1 py-1.5 rounded-md text-xs font-medium transition-colors",
+            "flex-1 py-1.5 rounded-md text-xs font-medium transition-colors motion-reduce:transition-none",
             tab === "completed"
-              ? "bg-red-600 text-white"
-              : "text-gray-500 hover:text-gray-900"
+              ? "bg-[var(--primary)] text-white"
+              : "text-[var(--text-muted)] hover:text-[var(--text)]"
           )}
         >
           History ({completedOrders.length})
@@ -100,9 +112,9 @@ export default function OrdersPage() {
       </div>
 
       {loading ? (
-        <div className="space-y-3">
+        <div className="space-y-3" aria-label="Loading orders" role="status">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-24 bg-gray-200/30 dark:bg-gray-700/30 rounded-xl animate-pulse" />
+            <Skeleton key={i} className="h-24 rounded-xl" />
           ))}
         </div>
       ) : displayOrders.length > 0 ? (
@@ -111,7 +123,7 @@ export default function OrdersPage() {
             <Link
               key={order.id}
               href={`/orders/${order.id}`}
-              className="block p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow"
+              className="block p-4 bg-[var(--surface)] rounded-xl border border-[var(--border)] hover:border-[var(--primary)] transition-colors motion-reduce:transition-none"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -125,40 +137,39 @@ export default function OrdersPage() {
                       {ORDER_STATUSES[order.status as OrderStatus]?.label}
                     </span>
                   </div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-gray-50 truncate">
+                  <p className="text-sm font-medium text-[var(--text)] truncate">
                     {order.store?.name}
                   </p>
-                  <p className="text-xs text-gray-500 mt-0.5">
+                  <p className="text-xs text-[var(--text-muted)] mt-0.5">
                     {order.items?.length || 0} items · Pickup: {order.pickup_time}
                   </p>
-                  <p className="text-xs text-gray-500/50 mt-0.5">
-                    <Clock size={10} className="inline mr-1" />
+                  <p className="text-xs text-[var(--text-subtle)] mt-0.5 flex items-center gap-1">
+                    <Clock size={10} aria-hidden="true" />
                     {format(new Date(order.created_at), "MMM d, h:mm a")}
                   </p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-sm font-bold font-mono text-red-600">
+                  <p className="text-sm font-bold font-mono text-[var(--primary)]">
                     ৳{order.total_price.toFixed(0)}
                   </p>
-                  <ChevronRight size={16} className="text-gray-500/30 ml-auto mt-2" />
+                  <ChevronRight size={16} className="text-[var(--text-subtle)] ml-auto mt-2" aria-hidden="true" />
                 </div>
               </div>
             </Link>
           ))}
         </div>
       ) : (
-        <div className="text-center py-16">
-          <Package size={40} className="mx-auto mb-3 text-gray-300" />
-          <p className="text-sm text-gray-500">
-            {tab === "active" ? "No active orders" : "No order history yet"}
-          </p>
-          <Link
-            href="/feed"
-            className="inline-flex mt-3 px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700"
-          >
-            Browse Food
-          </Link>
-        </div>
+        <EmptyState
+          icon={Package}
+          title={tab === "active" ? "No active orders" : "No order history yet"}
+          message={
+            tab === "active"
+              ? "When you place an order, you'll see it here as it progresses."
+              : "Once an order is completed, declined, or cancelled, it'll appear here."
+          }
+          ctaLabel="Browse food"
+          ctaHref="/feed"
+        />
       )}
     </div>
   );

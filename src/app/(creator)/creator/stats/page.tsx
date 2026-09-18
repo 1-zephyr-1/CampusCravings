@@ -9,6 +9,7 @@ import {
   Users,
   ShoppingCart,
 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface DailyOrders {
   date: string;
@@ -165,51 +166,54 @@ export default function StatsPage() {
     }
 
     loadStats();
-  }, []);
+  }, [supabase]);
 
   const maxDailyRevenue = Math.max(...dailyOrders.map((d) => d.revenue), 1);
   const maxUserGrowth = Math.max(...userGrowth.map((u) => u.count), 1);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="h-8 w-8 border-[3px] border-red-600 border-t-transparent rounded-full animate-spin" />
+      <div className="space-y-4" aria-label="Loading stats" role="status">
+        <Skeleton className="h-8 w-48 rounded-lg" />
+        <Skeleton className="h-64 rounded-xl" />
+        <Skeleton className="h-64 rounded-xl" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+      <h1 className="text-2xl font-bold text-[var(--text)]">
         Detailed Stats
       </h1>
 
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5">
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5">
         <div className="flex items-center gap-2 mb-4">
-          <BarChart3 size={18} className="text-gray-500" />
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+          <BarChart3 size={18} className="text-[var(--text-muted)]" aria-hidden="true" />
+          <h2 className="text-lg font-semibold text-[var(--text)]">
             Orders — Last 7 Days
           </h2>
         </div>
         <div className="flex items-end gap-2 h-40">
           {dailyOrders.map((day) => (
             <div key={day.date} className="flex-1 flex flex-col items-center gap-1">
-              <span className="text-xs text-gray-500 dark:text-gray-400">
+              <span className="text-xs text-[var(--text-muted)]">
                 {day.count}
               </span>
               <div
-                className="w-full bg-red-600/20 rounded-t-md min-h-[4px]"
+                aria-hidden="true"
+                className="w-full bg-[var(--primary)]/20 rounded-t-md min-h-[4px]"
                 style={{
                   height: `${(day.revenue / maxDailyRevenue) * 100}%`,
                 }}
               />
-              <span className="text-[10px] text-gray-500 dark:text-gray-400">
+              <span className="text-[10px] text-[var(--text-muted)]">
                 {new Date(day.date).toLocaleDateString("en-US", { weekday: "short" })}
               </span>
             </div>
           ))}
         </div>
-        <div className="mt-3 flex justify-between text-xs text-gray-500 dark:text-gray-400">
+        <div className="mt-3 flex justify-between text-xs text-[var(--text-muted)]">
           <span>
             Total: {dailyOrders.reduce((s, d) => s + d.count, 0)} orders
           </span>
@@ -220,33 +224,33 @@ export default function StatsPage() {
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5">
+        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5">
           <div className="flex items-center gap-2 mb-4">
-            <TrendingUp size={18} className="text-gray-500" />
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+            <TrendingUp size={18} className="text-[var(--text-muted)]" aria-hidden="true" />
+            <h2 className="text-lg font-semibold text-[var(--text)]">
               Top Sellers by Revenue
             </h2>
           </div>
           <div className="space-y-3">
             {topSellers.length === 0 ? (
-              <p className="text-sm text-gray-500 dark:text-gray-400 py-4 text-center">
+              <p className="text-sm text-[var(--text-muted)] py-4 text-center">
                 No completed orders yet
               </p>
             ) : (
               topSellers.map((seller, i) => (
                 <div key={i} className="flex items-center gap-3">
-                  <span className="text-sm font-bold text-red-600 w-5">
+                  <span className="text-sm font-bold text-[var(--primary)] w-5">
                     {i + 1}.
                   </span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                    <p className="text-sm font-medium text-[var(--text)] truncate">
                       {seller.name}
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                    <p className="text-xs text-[var(--text-muted)]">
                       {seller.orders} orders
                     </p>
                   </div>
-                  <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                  <span className="text-sm font-semibold text-[var(--text)] font-mono">
                     ৳{seller.revenue.toLocaleString()}
                   </span>
                 </div>
@@ -255,30 +259,30 @@ export default function StatsPage() {
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5">
+        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5">
           <div className="flex items-center gap-2 mb-4">
-            <ShoppingCart size={18} className="text-gray-500" />
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+            <ShoppingCart size={18} className="text-[var(--text-muted)]" aria-hidden="true" />
+            <h2 className="text-lg font-semibold text-[var(--text)]">
               Category Breakdown
             </h2>
           </div>
           <div className="space-y-3">
             {categoryBreakdown.length === 0 ? (
-              <p className="text-sm text-gray-500 dark:text-gray-400 py-4 text-center">
+              <p className="text-sm text-[var(--text-muted)] py-4 text-center">
                 No categories found
               </p>
             ) : (
               categoryBreakdown.slice(0, 5).map((cat, i) => (
                 <div key={i} className="flex items-center justify-between">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                    <p className="text-sm font-medium text-[var(--text)]">
                       {cat.name}
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                    <p className="text-xs text-[var(--text-muted)]">
                       {cat.item_count} items
                     </p>
                   </div>
-                  <span className="text-sm text-gray-500 dark:text-gray-300">
+                  <span className="text-sm text-[var(--text-muted)]">
                     {cat.order_count} orders
                   </span>
                 </div>
@@ -288,32 +292,33 @@ export default function StatsPage() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5">
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5">
         <div className="flex items-center gap-2 mb-4">
-          <Users size={18} className="text-gray-500" />
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+          <Users size={18} className="text-[var(--text-muted)]" aria-hidden="true" />
+          <h2 className="text-lg font-semibold text-[var(--text)]">
             User Growth
           </h2>
         </div>
         <div className="flex items-end gap-3 h-36">
           {userGrowth.map((month) => (
             <div key={month.month} className="flex-1 flex flex-col items-center gap-1">
-              <span className="text-xs text-gray-500 dark:text-gray-400">
+              <span className="text-xs text-[var(--text-muted)]">
                 {month.count}
               </span>
               <div
-                className="w-full bg-green-600/20 rounded-t-md min-h-[4px]"
+                aria-hidden="true"
+                className="w-full bg-[var(--success)]/20 rounded-t-md min-h-[4px]"
                 style={{
                   height: `${(month.count / maxUserGrowth) * 100}%`,
                 }}
               />
-              <span className="text-[10px] text-gray-500 dark:text-gray-400">
+              <span className="text-[10px] text-[var(--text-muted)]">
                 {month.month}
               </span>
             </div>
           ))}
         </div>
-        <div className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+        <div className="mt-3 text-xs text-[var(--text-muted)]">
           Total new users (6 months):{" "}
           {userGrowth.reduce((s, m) => s + m.count, 0)}
         </div>

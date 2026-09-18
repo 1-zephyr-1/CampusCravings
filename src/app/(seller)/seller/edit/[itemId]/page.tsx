@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { Category, Store, FoodItem } from "@/types";
 import { DIETARY_TAGS, SPICE_LEVELS, MAX_PHOTOS_PER_ITEM, MAX_UPLOAD_SIZE, ALLOWED_IMAGE_TYPES } from "@/lib/constants";
 import { clsx } from "clsx";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Upload, X, ArrowLeft, Save } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -99,7 +100,7 @@ export default function EditItemPage({
     }
 
     init();
-  }, [profile, itemId]);
+  }, [profile, itemId, supabase]);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = Array.from(e.target.files || []);
@@ -230,14 +231,11 @@ export default function EditItemPage({
 
   if (loading) {
     return (
-      <div className="max-w-2xl mx-auto px-4 md:px-6 py-4">
-        <div className="h-8 w-48 bg-gray-200 rounded-lg animate-pulse mb-4" />
+      <div className="max-w-2xl mx-auto px-4 md:px-6 py-4" aria-label="Loading item" role="status">
+        <Skeleton className="h-8 w-48 rounded-lg mb-4" />
         <div className="space-y-4">
           {[...Array(4)].map((_, i) => (
-            <div
-              key={i}
-              className="h-20 bg-gray-200 rounded-xl animate-pulse"
-            />
+            <Skeleton key={i} className="h-20 rounded-xl" />
           ))}
         </div>
       </div>
@@ -247,10 +245,10 @@ export default function EditItemPage({
   if (!item) {
     return (
       <div className="max-w-2xl mx-auto px-4 md:px-6 py-16 text-center">
-        <p className="text-sm text-gray-500">Item not found</p>
+        <p className="text-sm text-[var(--text-muted)]">Item not found</p>
         <Link
           href="/seller/items"
-          className="inline-flex mt-3 px-4 py-2 bg-red-600 text-white rounded-full text-sm font-semibold"
+          className="inline-flex mt-3 px-4 py-2 bg-[var(--primary)] text-white rounded-full text-sm font-semibold hover:bg-[var(--primary-hover)] transition-colors motion-reduce:transition-none"
         >
           Back to Items
         </Link>
@@ -265,81 +263,87 @@ export default function EditItemPage({
       <div className="flex items-center gap-3 mb-4">
         <Link
           href="/seller/items"
-          className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
+          aria-label="Back to items"
+          className="p-2 rounded-lg text-[var(--text-muted)] hover:bg-[var(--background)] transition-colors motion-reduce:transition-none"
         >
-          <ArrowLeft size={18} />
+          <ArrowLeft size={18} aria-hidden="true" />
         </Link>
-        <h1 className="text-xl font-bold text-gray-900">
+        <h1 className="text-xl font-bold text-[var(--text)]">
           Edit Item
         </h1>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="p-4 bg-white rounded-xl border border-gray-200 space-y-4">
+        <div className="p-4 bg-[var(--surface)] rounded-xl border border-[var(--border)] space-y-4">
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1.5">
+            <label htmlFor="edit-name" className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">
               Name *
             </label>
             <input
+              id="edit-name"
               type="text"
               value={form.name}
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, name: e.target.value }))
               }
-              className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-red-600"
+              className="w-full px-3 py-2.5 bg-[var(--background)] border border-[var(--border)] rounded-xl text-sm text-[var(--text)] placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)]"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1.5">
+            <label htmlFor="edit-description" className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">
               Description
             </label>
             <textarea
+              id="edit-description"
               value={form.description}
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, description: e.target.value }))
               }
               rows={3}
-              className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-red-600 resize-none"
+              className="w-full px-3 py-2.5 bg-[var(--background)] border border-[var(--border)] rounded-xl text-sm text-[var(--text)] placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)] resize-none"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">
+              <label htmlFor="edit-price" className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">
                 Price (৳) *
               </label>
               <input
+                id="edit-price"
                 type="number"
                 min="1"
                 value={form.price}
                 onChange={(e) =>
                   setForm((prev) => ({ ...prev, price: e.target.value }))
                 }
-                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 font-mono placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-red-600"
+                className="w-full px-3 py-2.5 bg-[var(--background)] border border-[var(--border)] rounded-xl text-sm text-[var(--text)] font-mono placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)]"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1.5">
+              <label htmlFor="edit-qty" className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">
                 Quantity *
               </label>
               <input
+                id="edit-qty"
                 type="number"
                 min="1"
                 value={form.quantity}
                 onChange={(e) =>
                   setForm((prev) => ({ ...prev, quantity: e.target.value }))
                 }
-                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 font-mono placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-red-600"
+                className="w-full px-3 py-2.5 bg-[var(--background)] border border-[var(--border)] rounded-xl text-sm text-[var(--text)] font-mono placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)]"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1.5">
+            <label htmlFor="edit-window" className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">
               Ordering Window
             </label>
             <input
+              id="edit-window"
               type="text"
               value={form.ordering_window}
               onChange={(e) =>
@@ -349,28 +353,30 @@ export default function EditItemPage({
                 }))
               }
               placeholder="e.g. 12pm - 3pm"
-              className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-red-600"
+              className="w-full px-3 py-2.5 bg-[var(--background)] border border-[var(--border)] rounded-xl text-sm text-[var(--text)] placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)]"
             />
           </div>
         </div>
 
-        <div className="p-4 bg-white rounded-xl border border-gray-200">
-          <label className="block text-xs font-medium text-gray-500 mb-2">
+        <div className="p-4 bg-[var(--surface)] rounded-xl border border-[var(--border)]">
+          <span className="block text-xs font-medium text-[var(--text-muted)] mb-2">
             Spice Level
-          </label>
-          <div className="flex gap-2">
+          </span>
+          <div role="radiogroup" aria-label="Spice level" className="flex gap-2">
             {SPICE_LEVELS.map((level) => (
               <button
                 key={level.value}
                 type="button"
+                role="radio"
+                aria-checked={form.spice_level === level.value}
                 onClick={() =>
                   setForm((prev) => ({ ...prev, spice_level: level.value }))
                 }
                 className={clsx(
-                  "flex-1 py-2 rounded-xl text-xs font-medium border transition-colors",
+                  "flex-1 py-2 rounded-xl text-xs font-medium border transition-colors motion-reduce:transition-none",
                   form.spice_level === level.value
-                    ? "bg-red-600 text-white border-red-600"
-                    : "bg-gray-50 border-gray-200 text-gray-500 hover:border-red-300"
+                    ? "bg-[var(--primary)] text-white border-[var(--primary)]"
+                    : "bg-[var(--background)] border-[var(--border)] text-[var(--text-muted)] hover:border-[var(--primary)]/40 hover:text-[var(--text)]"
                 )}
               >
                 {level.label}
@@ -379,21 +385,22 @@ export default function EditItemPage({
           </div>
         </div>
 
-        <div className="p-4 bg-white rounded-xl border border-gray-200">
-          <label className="block text-xs font-medium text-gray-500 mb-2">
+        <div className="p-4 bg-[var(--surface)] rounded-xl border border-[var(--border)]">
+          <span className="block text-xs font-medium text-[var(--text-muted)] mb-2">
             Dietary Tags
-          </label>
-          <div className="flex flex-wrap gap-2">
+          </span>
+          <div role="group" aria-label="Dietary tags" className="flex flex-wrap gap-2">
             {DIETARY_TAGS.map((tag) => (
               <button
                 key={tag}
                 type="button"
+                aria-pressed={form.dietary_tags.includes(tag)}
                 onClick={() => toggleDietaryTag(tag)}
                 className={clsx(
-                  "px-3 py-1.5 rounded-full text-xs font-medium border transition-colors",
+                  "px-3 py-1.5 rounded-full text-xs font-medium border transition-colors motion-reduce:transition-none",
                   form.dietary_tags.includes(tag)
-                    ? "bg-red-600 text-white border-red-600"
-                    : "bg-gray-50 border-gray-200 text-gray-500 hover:border-red-300"
+                    ? "bg-[var(--primary)] text-white border-[var(--primary)]"
+                    : "bg-[var(--background)] border-[var(--border)] text-[var(--text-muted)] hover:border-[var(--primary)]/40 hover:text-[var(--text)]"
                 )}
               >
                 {tag}
@@ -402,21 +409,22 @@ export default function EditItemPage({
           </div>
         </div>
 
-        <div className="p-4 bg-white rounded-xl border border-gray-200">
-          <label className="block text-xs font-medium text-gray-500 mb-2">
+        <div className="p-4 bg-[var(--surface)] rounded-xl border border-[var(--border)]">
+          <span className="block text-xs font-medium text-[var(--text-muted)] mb-2">
             Categories
-          </label>
-          <div className="flex flex-wrap gap-2">
+          </span>
+          <div role="group" aria-label="Categories" className="flex flex-wrap gap-2">
             {categories.map((cat) => (
               <button
                 key={cat.id}
                 type="button"
+                aria-pressed={selectedCategories.includes(cat.id)}
                 onClick={() => toggleCategory(cat.id)}
                 className={clsx(
-                  "px-3 py-1.5 rounded-full text-xs font-medium border transition-colors",
+                  "px-3 py-1.5 rounded-full text-xs font-medium border transition-colors motion-reduce:transition-none",
                   selectedCategories.includes(cat.id)
-                    ? "bg-red-600 text-white border-red-600"
-                    : "bg-gray-50 border-gray-200 text-gray-500 hover:border-red-300"
+                    ? "bg-[var(--primary)] text-white border-[var(--primary)]"
+                    : "bg-[var(--background)] border-[var(--border)] text-[var(--text-muted)] hover:border-[var(--primary)]/40 hover:text-[var(--text)]"
                 )}
               >
                 {cat.icon} {cat.name}
@@ -425,10 +433,10 @@ export default function EditItemPage({
           </div>
         </div>
 
-        <div className="p-4 bg-white rounded-xl border border-gray-200">
-          <label className="block text-xs font-medium text-gray-500 mb-2">
+        <div className="p-4 bg-[var(--surface)] rounded-xl border border-[var(--border)]">
+          <span className="block text-xs font-medium text-[var(--text-muted)] mb-2">
             Photos ({totalPhotos}/{MAX_PHOTOS_PER_ITEM})
-          </label>
+          </span>
 
           {(existingUrls.length > 0 || previews.length > 0) && (
             <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
@@ -439,14 +447,15 @@ export default function EditItemPage({
                     alt={`Photo ${i + 1}`}
                     width={80}
                     height={80}
-                    className="w-20 h-20 object-cover rounded-xl border border-gray-200"
+                    className="w-20 h-20 object-cover rounded-xl border border-[var(--border)]"
                   />
                   <button
                     type="button"
                     onClick={() => removeExistingPhoto(i)}
-                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-600 text-white rounded-full flex items-center justify-center"
+                    aria-label={`Remove photo ${i + 1}`}
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-[var(--primary)] text-white rounded-full flex items-center justify-center hover:bg-[var(--primary-hover)] transition-colors motion-reduce:transition-none"
                   >
-                    <X size={10} />
+                    <X size={10} aria-hidden="true" />
                   </button>
                 </div>
               ))}
@@ -454,17 +463,18 @@ export default function EditItemPage({
                 <div key={`new-${i}`} className="relative shrink-0">
                   <Image
                     src={src}
-                    alt={`New ${i + 1}`}
+                    alt={`New photo ${i + 1}`}
                     width={80}
                     height={80}
-                    className="w-20 h-20 object-cover rounded-xl border border-gray-200"
+                    className="w-20 h-20 object-cover rounded-xl border border-[var(--border)]"
                   />
                   <button
                     type="button"
                     onClick={() => removeNewPhoto(i)}
-                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-600 text-white rounded-full flex items-center justify-center"
+                    aria-label={`Remove new photo ${i + 1}`}
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-[var(--primary)] text-white rounded-full flex items-center justify-center hover:bg-[var(--primary-hover)] transition-colors motion-reduce:transition-none"
                   >
-                    <X size={10} />
+                    <X size={10} aria-hidden="true" />
                   </button>
                 </div>
               ))}
@@ -475,9 +485,9 @@ export default function EditItemPage({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="w-full flex items-center justify-center gap-2 py-6 border-2 border-dashed border-gray-200 rounded-xl text-gray-500 hover:border-red-300 hover:text-red-600 transition-colors"
+              className="w-full flex items-center justify-center gap-2 py-6 border-2 border-dashed border-[var(--border)] rounded-xl text-[var(--text-muted)] hover:border-[var(--primary)]/40 hover:text-[var(--primary)] transition-colors motion-reduce:transition-none"
             >
-              <Upload size={18} />
+              <Upload size={18} aria-hidden="true" />
               <span className="text-xs font-medium">Add Photo</span>
             </button>
           )}
@@ -488,27 +498,33 @@ export default function EditItemPage({
             accept="image/*"
             multiple
             onChange={handleFileChange}
+            aria-label="Upload food item photos"
             className="hidden"
           />
         </div>
 
         {error && (
-          <p className="text-xs text-red-600 font-medium text-center">{error}</p>
+          <p role="alert" className="text-xs text-[var(--danger)] font-medium text-center">
+            {error}
+          </p>
         )}
 
         <button
           type="submit"
           disabled={uploading}
-          className="w-full py-3 bg-red-600 text-white rounded-full text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+          className="w-full py-3 bg-[var(--primary)] text-white rounded-full text-sm font-semibold hover:bg-[var(--primary-hover)] transition-colors motion-reduce:transition-none disabled:opacity-50 flex items-center justify-center gap-2"
         >
           {uploading ? (
             <>
-              <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <span
+                aria-hidden="true"
+                className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"
+              />
               Saving...
             </>
           ) : (
             <>
-              <Save size={16} />
+              <Save size={16} aria-hidden="true" />
               Save Changes
             </>
           )}

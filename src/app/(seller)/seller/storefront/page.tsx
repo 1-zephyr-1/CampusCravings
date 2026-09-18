@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { Store } from "@/types";
 import { MAX_UPLOAD_SIZE, ALLOWED_IMAGE_TYPES } from "@/lib/constants";
 import { clsx } from "clsx";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Upload, X, Save } from "lucide-react";
 import Image from "next/image";
 
@@ -60,7 +61,7 @@ export default function SellerStorefrontPage() {
     }
 
     init();
-  }, [profile]);
+  }, [profile, supabase]);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -169,14 +170,11 @@ export default function SellerStorefrontPage() {
 
   if (loading) {
     return (
-      <div className="max-w-2xl mx-auto px-4 md:px-6 py-4">
-        <div className="h-8 w-48 bg-sand/30 dark:bg-[#3A2E20] rounded-lg animate-pulse mb-4" />
+      <div className="max-w-2xl mx-auto px-4 md:px-6 py-4" aria-label="Loading storefront" role="status">
+        <Skeleton className="h-8 w-48 rounded-lg mb-4" />
         <div className="space-y-4">
           {[...Array(3)].map((_, i) => (
-            <div
-              key={i}
-              className="h-20 bg-sand/30 dark:bg-[#3A2E20] rounded-xl animate-pulse"
-            />
+            <Skeleton key={i} className="h-20 rounded-xl" />
           ))}
         </div>
       </div>
@@ -185,82 +183,86 @@ export default function SellerStorefrontPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 md:px-6 py-4">
-      <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+      <h1 className="text-xl font-bold text-[var(--text)] mb-4">
         {store ? "Edit Storefront" : "Set Up Storefront"}
       </h1>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 space-y-4">
+        <div className="p-4 bg-[var(--surface)] rounded-xl border border-[var(--border)] space-y-4">
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1.5">
+            <label htmlFor="store-name" className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">
               Store Name *
             </label>
             <input
+              id="store-name"
               type="text"
               value={form.name}
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, name: e.target.value }))
               }
               placeholder="e.g. Amma's Kitchen"
-              className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500"
+              className="w-full px-3 py-2.5 bg-[var(--background)] border border-[var(--border)] rounded-xl text-sm text-[var(--text)] placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)]"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1.5">
+            <label htmlFor="store-description" className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">
               Description
             </label>
             <textarea
+              id="store-description"
               value={form.description}
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, description: e.target.value }))
               }
               placeholder="Tell customers about your cooking..."
               rows={3}
-              className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500 resize-none"
+              className="w-full px-3 py-2.5 bg-[var(--background)] border border-[var(--border)] rounded-xl text-sm text-[var(--text)] placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)] resize-none"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1.5">
+            <label htmlFor="store-pickup" className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">
               Pickup Location *
             </label>
             <input
+              id="store-pickup"
               type="text"
               value={form.pickup_area}
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, pickup_area: e.target.value }))
               }
               placeholder="e.g. Room 301, Student Union Building"
-              className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500"
+              className="w-full px-3 py-2.5 bg-[var(--background)] border border-[var(--border)] rounded-xl text-sm text-[var(--text)] placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)]"
             />
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-[var(--text-subtle)] mt-1">
               Enter the exact location where students can pick up their orders
             </p>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1.5">
+            <label htmlFor="store-food-type" className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">
               Food Type / Cuisine
             </label>
             <input
+              id="store-food-type"
               type="text"
               value={form.food_type}
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, food_type: e.target.value }))
               }
               placeholder="e.g. Bangladeshi, Indian, Fast Food, Desserts"
-              className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500"
+              className="w-full px-3 py-2.5 bg-[var(--background)] border border-[var(--border)] rounded-xl text-sm text-[var(--text)] placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)]"
             />
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-[var(--text-subtle)] mt-1">
               What type of food do you specialize in?
             </p>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1.5">
+            <span className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">
               Store Photo
-            </label>
+            </span>
 
             {preview && (
               <div className="relative inline-block mb-2">
@@ -269,14 +271,15 @@ export default function SellerStorefrontPage() {
                   alt="Store photo"
                   width={96}
                   height={96}
-                  className="w-24 h-24 object-cover rounded-xl border border-gray-200 dark:border-gray-700"
+                  className="w-24 h-24 object-cover rounded-xl border border-[var(--border)]"
                 />
                 <button
                   type="button"
                   onClick={removePhoto}
-                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-600 text-white rounded-full flex items-center justify-center"
+                  aria-label="Remove store photo"
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-[var(--primary)] text-white rounded-full flex items-center justify-center hover:bg-[var(--primary-hover)] transition-colors motion-reduce:transition-none"
                 >
-                  <X size={10} />
+                  <X size={10} aria-hidden="true" />
                 </button>
               </div>
             )}
@@ -284,9 +287,9 @@ export default function SellerStorefrontPage() {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-medium text-gray-500 hover:border-red-500/50 hover:text-red-600 transition-colors"
+              className="flex items-center gap-2 px-4 py-2.5 border border-[var(--border)] rounded-xl text-xs font-medium text-[var(--text-muted)] hover:border-[var(--primary)]/50 hover:text-[var(--primary)] transition-colors motion-reduce:transition-none"
             >
-              <Upload size={14} />
+              <Upload size={14} aria-hidden="true" />
               {preview ? "Change Photo" : "Upload Photo"}
             </button>
 
@@ -295,18 +298,19 @@ export default function SellerStorefrontPage() {
               type="file"
               accept="image/*"
               onChange={handleFileChange}
+              aria-label="Upload store photo"
               className="hidden"
             />
           </div>
         </div>
 
-        <div className="p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+        <div className="p-4 bg-[var(--surface)] rounded-xl border border-[var(--border)]">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-900 dark:text-white">
+              <p className="text-sm font-medium text-[var(--text)]">
                 Store Status
               </p>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-[var(--text-muted)]">
                 {form.is_open
                   ? "Customers can place orders"
                   : "Store is closed for orders"}
@@ -321,13 +325,13 @@ export default function SellerStorefrontPage() {
                 setForm((prev) => ({ ...prev, is_open: !prev.is_open }))
               }
               className={clsx(
-                "relative w-11 h-6 rounded-full transition-colors",
-                form.is_open ? "bg-green-600" : "bg-gray-300 dark:bg-gray-600"
+                "relative w-11 h-6 rounded-full transition-colors motion-reduce:transition-none",
+                form.is_open ? "bg-[var(--success)]" : "bg-[var(--border)]"
               )}
             >
               <span
                 className={clsx(
-                  "absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform shadow-sm",
+                  "absolute top-0.5 left-0.5 w-5 h-5 bg-[var(--surface)] rounded-full transition-transform motion-reduce:transition-none shadow-sm",
                   form.is_open && "translate-x-5"
                 )}
               />
@@ -336,22 +340,25 @@ export default function SellerStorefrontPage() {
         </div>
 
         {error && (
-          <p className="text-xs text-red-600 font-medium text-center">{error}</p>
+          <p role="alert" className="text-xs text-[var(--danger)] font-medium text-center">{error}</p>
         )}
 
         <button
           type="submit"
           disabled={saving}
-          className="w-full py-3 bg-red-600 text-white rounded-full text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+          className="w-full py-3 bg-[var(--primary)] text-white rounded-full text-sm font-semibold hover:bg-[var(--primary-hover)] transition-colors motion-reduce:transition-none disabled:opacity-50 flex items-center justify-center gap-2"
         >
           {saving ? (
             <>
-              <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <span
+                aria-hidden="true"
+                className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"
+              />
               Saving...
             </>
           ) : (
             <>
-              <Save size={16} />
+              <Save size={16} aria-hidden="true" />
               {store ? "Save Changes" : "Create Store"}
             </>
           )}

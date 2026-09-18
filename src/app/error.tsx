@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect } from "react";
+import { AlertCircle, Home } from "lucide-react";
 
 export default function Error({
   error,
@@ -14,23 +16,36 @@ export default function Error({
   }, [error]);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center px-6">
+    <div className="min-h-screen bg-[var(--background)] flex items-center justify-center px-6">
       <div className="text-center max-w-md">
-        <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-600 lucide lucide-alert-circle"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+        <div
+          aria-hidden="true"
+          className="w-16 h-16 bg-[var(--danger)]/10 rounded-full flex items-center justify-center mx-auto mb-4"
+        >
+          <AlertCircle size={32} className="text-[var(--danger)]" />
         </div>
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+        <h2 className="text-xl font-bold text-[var(--text)] mb-2">
           Something went wrong
         </h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+        <p className="text-sm text-[var(--text-muted)] mb-6">
           An unexpected error occurred. Please try again.
         </p>
-        <button
-          onClick={reset}
-          className="px-6 py-2.5 bg-red-600 text-white rounded-lg font-semibold text-sm hover:bg-red-700 transition-colors"
-        >
-          Try Again
-        </button>
+        <div className="flex gap-3 justify-center">
+          <button
+            type="button"
+            onClick={reset}
+            className="px-6 py-2.5 bg-[var(--primary)] text-white rounded-lg font-semibold text-sm hover:bg-[var(--primary-hover)] transition-colors motion-reduce:transition-none"
+          >
+            Try Again
+          </button>
+          <Link
+            href="/feed"
+            className="inline-flex items-center gap-1.5 px-6 py-2.5 bg-[var(--surface)] border border-[var(--border)] text-[var(--text)] rounded-lg font-medium text-sm hover:bg-[var(--background)] transition-colors motion-reduce:transition-none"
+          >
+            <Home size={14} aria-hidden="true" />
+            Go home
+          </Link>
+        </div>
       </div>
     </div>
   );

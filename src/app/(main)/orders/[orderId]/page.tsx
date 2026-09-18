@@ -19,6 +19,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { clsx } from "clsx";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function OrderDetailPage() {
   const { orderId } = useParams();
@@ -76,7 +77,7 @@ export default function OrderDetailPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [orderId]);
+  }, [orderId, supabase]);
 
   async function submitReview() {
     if (!user || !order) return;
@@ -101,11 +102,9 @@ export default function OrderDetailPage() {
 
   if (loading) {
     return (
-      <div className="max-w-3xl mx-auto px-4 py-4">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200/30 dark:bg-gray-700/30 rounded w-1/3" />
-          <div className="h-40 bg-gray-200/30 dark:bg-gray-700/30 rounded-xl" />
-        </div>
+      <div className="max-w-3xl mx-auto px-4 py-4" aria-label="Loading order" role="status">
+        <Skeleton className="h-8 w-1/3 rounded-lg mb-4" />
+        <Skeleton className="h-40 rounded-xl" />
       </div>
     );
   }
@@ -113,8 +112,8 @@ export default function OrderDetailPage() {
   if (!order) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-16 text-center">
-        <p className="text-gray-500">Order not found</p>
-        <Link href="/orders" className="text-sm text-red-600 mt-2 inline-block">
+        <p className="text-[var(--text-muted)]">Order not found</p>
+        <Link href="/orders" className="text-sm text-[var(--primary)] mt-2 inline-block hover:underline">
           Back to orders
         </Link>
       </div>
@@ -129,14 +128,14 @@ export default function OrderDetailPage() {
     <div className="max-w-3xl mx-auto px-4 md:px-6 py-4">
       <Link
         href="/orders"
-        className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 dark:hover:text-gray-50 mb-4"
+        className="inline-flex items-center gap-1 text-sm text-[var(--text-muted)] hover:text-[var(--text)] mb-4 transition-colors motion-reduce:transition-none"
       >
-        <ChevronLeft size={16} />
+        <ChevronLeft size={16} aria-hidden="true" />
         My Orders
       </Link>
 
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50">
+        <h1 className="text-xl font-bold text-[var(--text)]">
           Order Details
         </h1>
         <span
@@ -205,7 +204,7 @@ export default function OrderDetailPage() {
 
       {/* Stepper */}
       {!isDeclined && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 mb-4">
+        <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-4 mb-4">
           {statusSteps.map((step, index) => {
             const isCompleted = index <= currentStepIndex;
             const isCurrent = index === currentStepIndex;
@@ -216,8 +215,8 @@ export default function OrderDetailPage() {
                     className={clsx(
                       "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0",
                       isCompleted
-                        ? "bg-red-600 text-white"
-                        : "bg-gray-200 dark:bg-gray-700 text-gray-500"
+                        ? "bg-[var(--primary)] text-white"
+                        : "bg-[var(--background)] text-[var(--text-muted)]"
                     )}
                   >
                     {isCompleted ? "✓" : index + 1}
@@ -236,16 +235,16 @@ export default function OrderDetailPage() {
                     className={clsx(
                       "text-sm font-medium",
                       isCurrent
-                        ? "text-red-600"
+                        ? "text-[var(--primary)]"
                         : isCompleted
-                        ? "text-gray-900 dark:text-gray-50"
-                        : "text-gray-500"
+                          ? "text-[var(--text)]"
+                          : "text-[var(--text-muted)]"
                     )}
                   >
                     {ORDER_STATUSES[step]?.label}
                   </p>
                   {isCurrent && (
-                    <p className="text-xs text-gray-500 mt-0.5">
+                    <p className="text-xs text-[var(--text-muted)] mt-0.5">
                       {step === "requested" && "Waiting for seller to respond"}
                       {step === "accepted" && "Seller accepted your order"}
                       {step === "ready" && "Ready for pickup!"}
@@ -260,23 +259,23 @@ export default function OrderDetailPage() {
       )}
 
       {isDeclined && (
-        <div className="bg-red-600/5 border border-red-600/20 rounded-xl p-4 mb-4">
-          <p className="text-sm font-medium text-red-600 mb-1">Order Declined</p>
+        <div className="bg-[var(--danger)]/5 border border-[var(--danger)]/20 rounded-xl p-4 mb-4">
+          <p className="text-sm font-medium text-[var(--danger)] mb-1">Order Declined</p>
           {order.decline_reason && (
-            <p className="text-xs text-gray-500">{order.decline_reason}</p>
+            <p className="text-xs text-[var(--text-muted)]">{order.decline_reason}</p>
           )}
         </div>
       )}
 
       {/* Order info */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 mb-4">
+      <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-4 mb-4">
         <div className="flex items-center gap-2 mb-3 flex-wrap">
-          <h2 className="font-semibold text-sm text-gray-900 dark:text-gray-50">
+          <h2 className="font-semibold text-sm text-[var(--text)]">
             {order.store?.name}
           </h2>
           <Link
             href={`/feed/${order.store_id}`}
-            className="text-xs text-red-600 hover:underline"
+            className="text-xs text-[var(--primary)] hover:underline"
           >
             View store
           </Link>
@@ -289,40 +288,40 @@ export default function OrderDetailPage() {
           </Link>
         </div>
 
-        <div className="flex items-center gap-4 text-xs text-gray-500 mb-3">
+        <div className="flex items-center gap-4 text-xs text-[var(--text-muted)] mb-3">
           <span className="flex items-center gap-1">
-            <MapPin size={12} />
+            <MapPin size={12} aria-hidden="true" />
             {order.store?.pickup_area}
           </span>
           <span className="flex items-center gap-1">
-            <Clock size={12} />
+            <Clock size={12} aria-hidden="true" />
             Pickup: {order.pickup_time}
           </span>
         </div>
 
-        <div className="space-y-2 border-t border-gray-200 dark:border-gray-700 pt-3">
+        <div className="space-y-2 border-t border-[var(--border)] pt-3">
           {order.items?.map((oi) => (
             <div key={oi.id} className="flex items-center justify-between text-sm">
-              <span className="text-gray-900 dark:text-gray-50">
+              <span className="text-[var(--text)]">
                 {oi.quantity}x {oi.item?.name}
               </span>
-              <span className="font-mono text-gray-500">
+              <span className="font-mono text-[var(--text-muted)]">
                 ৳{(oi.price_at_time * oi.quantity).toFixed(0)}
               </span>
             </div>
           ))}
         </div>
 
-        <div className="flex items-center justify-between border-t border-gray-200 dark:border-gray-700 pt-3 mt-3">
-          <span className="text-sm font-medium text-gray-500">Total</span>
-          <span className="text-lg font-bold font-mono text-red-600">
+        <div className="flex items-center justify-between border-t border-[var(--border)] pt-3 mt-3">
+          <span className="text-sm font-medium text-[var(--text-muted)]">Total</span>
+          <span className="text-lg font-bold font-mono text-[var(--primary)]">
             ৳{order.total_price.toFixed(0)}
           </span>
         </div>
 
         {order.notes && (
-          <p className="text-xs text-gray-500 mt-3 bg-gray-50 dark:bg-gray-800 p-2 rounded-lg flex items-center gap-1.5">
-            <FileText size={12} className="shrink-0" />
+          <p className="text-xs text-[var(--text-muted)] mt-3 bg-[var(--background)] p-2 rounded-lg flex items-center gap-1.5">
+            <FileText size={12} className="shrink-0" aria-hidden="true" />
             {order.notes}
           </p>
         )}
@@ -330,13 +329,13 @@ export default function OrderDetailPage() {
 
       {/* Review */}
       {order.status === "completed" && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+        <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-4">
           {existingReview ? (
             <div>
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-50 mb-2">
+              <p className="text-sm font-medium text-[var(--text)] mb-2">
                 Your Review
               </p>
-              <div className="flex items-center gap-1 mb-1">
+              <div className="flex items-center gap-1 mb-1" aria-label={`Rated ${existingReview.rating} out of 5`}>
                 {[...Array(5)].map((_, i) => (
                   <Star
                     key={i}
@@ -344,30 +343,39 @@ export default function OrderDetailPage() {
                     className={
                       i < existingReview.rating
                         ? "fill-amber-500 text-amber-500"
-                        : "text-gray-200"
+                        : "text-[var(--border)]"
                     }
+                    aria-hidden="true"
                   />
                 ))}
               </div>
               {existingReview.comment && (
-                <p className="text-xs text-gray-500">{existingReview.comment}</p>
+                <p className="text-xs text-[var(--text-muted)]">{existingReview.comment}</p>
               )}
             </div>
           ) : showReview ? (
             <div>
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-50 mb-3">
+              <p className="text-sm font-medium text-[var(--text)] mb-3">
                 Rate your experience
               </p>
-              <div className="flex items-center gap-1 mb-3">
+              <div className="flex items-center gap-1 mb-3" role="radiogroup" aria-label="Rating">
                 {[1, 2, 3, 4, 5].map((s) => (
-                  <button key={s} onClick={() => setRating(s)}>
+                  <button
+                    key={s}
+                    type="button"
+                    role="radio"
+                    aria-checked={rating === s}
+                    aria-label={`${s} star${s === 1 ? "" : "s"}`}
+                    onClick={() => setRating(s)}
+                  >
                     <Star
                       size={24}
                       className={
                         s <= rating
                           ? "fill-amber-500 text-amber-500"
-                          : "text-gray-200 hover:text-amber-500/50"
+                          : "text-[var(--border)] hover:text-amber-500/50"
                       }
+                      aria-hidden="true"
                     />
                   </button>
                 ))}
@@ -377,18 +385,20 @@ export default function OrderDetailPage() {
                 onChange={(e) => setComment(e.target.value)}
                 placeholder="Tell others about your experience..."
                 rows={3}
-                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-50 mb-3"
+                className="w-full px-3 py-2 bg-[var(--background)] border border-[var(--border)] rounded-lg text-sm text-[var(--text)] placeholder:text-[var(--text-subtle)] mb-3 focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)]"
               />
               <div className="flex gap-2">
                 <button
+                  type="button"
                   onClick={submitReview}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700"
+                  className="px-4 py-2 bg-[var(--primary)] text-white rounded-lg text-sm font-semibold hover:bg-[var(--primary-hover)] transition-colors motion-reduce:transition-none"
                 >
                   Submit Review
                 </button>
                 <button
+                  type="button"
                   onClick={() => setShowReview(false)}
-                  className="px-4 py-2 text-gray-500 text-sm"
+                  className="px-4 py-2 text-[var(--text-muted)] text-sm hover:text-[var(--text)] transition-colors motion-reduce:transition-none"
                 >
                   Cancel
                 </button>
@@ -396,10 +406,11 @@ export default function OrderDetailPage() {
             </div>
           ) : (
             <button
+              type="button"
               onClick={() => setShowReview(true)}
-              className="w-full py-2.5 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-500 hover:border-red-600/30 hover:text-red-600 transition-colors flex items-center justify-center gap-2"
+              className="w-full py-2.5 border border-[var(--border)] rounded-lg text-sm font-medium text-[var(--text-muted)] hover:border-[var(--primary)]/30 hover:text-[var(--primary)] transition-colors motion-reduce:transition-none flex items-center justify-center gap-2"
             >
-              <Star size={16} />
+              <Star size={16} aria-hidden="true" />
               Rate this order
             </button>
           )}

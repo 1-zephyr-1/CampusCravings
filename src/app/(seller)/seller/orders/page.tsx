@@ -8,6 +8,8 @@ import { Order, OrderStatus, Store } from "@/types";
 import { ORDER_STATUSES, MAX_PENDING_ORDERS } from "@/lib/constants";
 
 import { clsx } from "clsx";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   Check,
   X,
@@ -59,7 +61,7 @@ export default function SellerOrdersPage() {
     }
 
     init();
-  }, [profile]);
+  }, [profile, supabase]);
 
   useEffect(() => {
     if (!store) return;
@@ -87,7 +89,7 @@ export default function SellerOrdersPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [store, fetchOrders]);
+  }, [store, fetchOrders, supabase]);
 
   async function updateOrderStatus(orderId: string, status: OrderStatus) {
     setUpdatingId(orderId);
@@ -133,40 +135,50 @@ export default function SellerOrdersPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 md:px-6 py-4">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-bold text-gray-900">
-          Orders
-        </h1>
+        <h1 className="text-xl font-bold text-[var(--text)]">Orders</h1>
         {store && (
           <span
             className={clsx(
               "px-3 py-1 rounded-full text-xs font-semibold",
-              store.is_open ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-500"
+              store.is_open
+                ? "bg-[var(--success)]/15 text-[var(--success)]"
+                : "bg-[var(--background)] text-[var(--text-muted)]"
             )}
           >
-            {store.is_open ? "Store Open" : "Store Closed"}
+            {store.is_open ? "Store open" : "Store closed"}
           </span>
         )}
       </div>
 
       {pendingOrders.length >= MAX_PENDING_ORDERS && (
-        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
-          <p className="text-xs font-medium text-amber-500">
+        <div
+          role="status"
+          className="mb-4 p-3 bg-[var(--warning-soft)] border border-[var(--warning)]/30 rounded-xl"
+        >
+          <p className="text-xs font-medium text-[var(--warning)]">
             You have {MAX_PENDING_ORDERS} pending orders. Accept or decline
             incoming orders before taking new ones.
           </p>
         </div>
       )}
 
-      <div className="flex gap-1 bg-white rounded-lg p-1 border border-gray-200 mb-4">
+      <div
+        role="tablist"
+        aria-label="Order status"
+        className="flex gap-1 bg-[var(--surface)] rounded-lg p-1 border border-[var(--border)] mb-4"
+      >
         {tabs.map((t) => (
           <button
             key={t.key}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.key}
             onClick={() => setTab(t.key)}
             className={clsx(
-              "flex-1 py-1.5 rounded-md text-xs font-medium transition-colors",
+              "flex-1 py-1.5 rounded-md text-xs font-medium transition-colors motion-reduce:transition-none",
               tab === t.key
-                ? "bg-red-600 text-white"
-                : "text-gray-500 hover:text-gray-900"
+                ? "bg-[var(--primary)] text-white"
+                : "text-[var(--text-muted)] hover:text-[var(--text)]"
             )}
           >
             {t.label} ({t.count})
@@ -175,20 +187,17 @@ export default function SellerOrdersPage() {
       </div>
 
       {loading ? (
-        <div className="space-y-3">
+        <div className="space-y-3" aria-label="Loading orders" role="status">
           {[...Array(3)].map((_, i) => (
-            <div
-              key={i}
-              className="h-32 bg-gray-200 rounded-xl animate-pulse"
-            />
+            <Skeleton key={i} className="h-32 rounded-xl" />
           ))}
         </div>
       ) : displayOrders.length > 0 ? (
-        <div className="space-y-3">
+        <ul role="list" className="space-y-3">
           {displayOrders.map((order) => (
-            <div
+            <li
               key={order.id}
-              className="p-4 bg-white rounded-xl border border-gray-200"
+              className="p-4 bg-[var(--surface)] rounded-xl border border-[var(--border)]"
             >
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div className="min-w-0">
@@ -201,48 +210,51 @@ export default function SellerOrdersPage() {
                     >
                       {ORDER_STATUSES[order.status]?.label}
                     </span>
-                    <span className="text-[10px] text-gray-400">
+                    <span className="text-[10px] text-[var(--text-subtle)] font-mono">
                       #{order.id.slice(0, 8)}
                     </span>
                   </div>
-                  <p className="text-sm font-medium text-gray-900">
+                  <p className="text-sm font-medium text-[var(--text)]">
                     {getAnonymizedName(order)}
                   </p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-sm font-bold font-mono text-red-600">
+                  <p className="text-sm font-bold font-mono text-[var(--primary)]">
                     ৳{order.total_price.toFixed(0)}
                   </p>
-                  <p className="text-[10px] text-gray-400 font-mono">
-                    <Clock size={10} className="inline mr-0.5" />
+                  <p className="text-[10px] text-[var(--text-subtle)] font-mono flex items-center justify-end gap-0.5">
+                    <Clock size={10} aria-hidden="true" />
                     {order.pickup_time}
                   </p>
                 </div>
               </div>
 
-              <div className="space-y-1.5 mb-3">
+              <ul role="list" className="space-y-1.5 mb-3">
                 {order.items?.map((oi) => (
-                  <div
+                  <li
                     key={oi.id}
                     className="flex items-center justify-between text-xs"
                   >
-                    <span className="text-gray-500 truncate">
+                    <span className="text-[var(--text-muted)] truncate">
                       {oi.quantity}× {oi.item?.name || "Item"}
                     </span>
-                    <span className="font-mono text-gray-900 shrink-0 ml-2">
+                    <span className="font-mono text-[var(--text)] shrink-0 ml-2">
                       ৳{(oi.price_at_time * oi.quantity).toFixed(0)}
                     </span>
-                  </div>
+                  </li>
                 ))}
-              </div>
+              </ul>
 
               {order.notes && (
-                <div className="flex items-start gap-1.5 mb-3 p-2 bg-gray-50 rounded-lg">
+                <div className="flex items-start gap-1.5 mb-3 p-2 bg-[var(--background)] rounded-lg">
                   <MessageSquare
                     size={12}
-                    className="text-gray-500 shrink-0 mt-0.5"
+                    className="text-[var(--text-muted)] shrink-0 mt-0.5"
+                    aria-hidden="true"
                   />
-                  <p className="text-xs text-gray-500">{order.notes}</p>
+                  <p className="text-xs text-[var(--text-muted)]">
+                    {order.notes}
+                  </p>
                 </div>
               )}
 
@@ -250,62 +262,88 @@ export default function SellerOrdersPage() {
                 {order.status === "requested" && (
                   <>
                     <button
+                      type="button"
                       onClick={() => updateOrderStatus(order.id, "declined")}
                       disabled={updatingId === order.id}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-full border border-red-300 text-red-600 text-xs font-semibold hover:bg-red-50 transition-colors disabled:opacity-50"
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-full border border-[var(--danger)]/40 text-[var(--danger)] text-xs font-semibold hover:bg-[var(--danger)]/5 transition-colors motion-reduce:transition-none disabled:opacity-50"
                     >
-                      <X size={14} />
+                      <X size={14} aria-hidden="true" />
                       Decline
                     </button>
                     <button
+                      type="button"
                       onClick={() => updateOrderStatus(order.id, "accepted")}
                       disabled={
                         updatingId === order.id ||
                         pendingOrders.length >= MAX_PENDING_ORDERS
                       }
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-full bg-green-600 text-white text-xs font-semibold hover:bg-green-700 transition-colors disabled:opacity-50"
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-full bg-[var(--success)] text-white text-xs font-semibold hover:bg-[var(--success)]/90 transition-colors motion-reduce:transition-none disabled:opacity-50"
                     >
-                      <Check size={14} />
+                      <Check size={14} aria-hidden="true" />
                       Accept
                     </button>
                   </>
                 )}
                 {order.status === "accepted" && (
                   <button
+                    type="button"
                     onClick={() => updateOrderStatus(order.id, "ready")}
                     disabled={updatingId === order.id}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-full bg-amber-500 text-white text-xs font-semibold hover:bg-amber-600 transition-colors disabled:opacity-50"
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-full bg-[var(--warning)] text-white text-xs font-semibold hover:bg-[var(--warning)]/90 transition-colors motion-reduce:transition-none disabled:opacity-50"
                   >
-                    <ChefHat size={14} />
-                    Mark Ready
+                    <ChefHat size={14} aria-hidden="true" />
+                    Mark ready
                   </button>
                 )}
                 {order.status === "ready" && (
                   <button
+                    type="button"
                     onClick={() => updateOrderStatus(order.id, "completed")}
                     disabled={updatingId === order.id}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-full bg-green-600 text-white text-xs font-semibold hover:bg-green-700 transition-colors disabled:opacity-50"
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-full bg-[var(--success)] text-white text-xs font-semibold hover:bg-[var(--success)]/90 transition-colors motion-reduce:transition-none disabled:opacity-50"
                   >
-                    <PackageCheck size={14} />
-                    Mark Completed
+                    <PackageCheck size={14} aria-hidden="true" />
+                    Mark completed
                   </button>
                 )}
+                <LinkForOrder orderId={order.id} />
               </div>
-            </div>
+            </li>
           ))}
-        </div>
+        </ul>
       ) : (
-        <div className="text-center py-16">
-          <RefreshCw size={32} className="mx-auto mb-3 text-gray-300" />
-          <p className="text-sm text-gray-500">
-            {tab === "incoming"
+        <EmptyState
+          icon={RefreshCw}
+          title={
+            tab === "incoming"
               ? "No incoming orders"
               : tab === "active"
                 ? "No active orders"
-                : "No completed orders"}
-          </p>
-        </div>
+                : "No completed orders yet"
+          }
+          message={
+            tab === "incoming"
+              ? "New pre-orders from buyers will appear here."
+              : tab === "active"
+                ? "Once you accept an order, it'll show up here."
+                : "Completed orders will be archived here for your records."
+          }
+        />
       )}
     </div>
+  );
+}
+
+import Link from "next/link";
+function LinkForOrder({ orderId }: { orderId: string }) {
+  return (
+    <Link
+      href={`/seller/orders/${orderId}/messages`}
+      className="flex items-center justify-center gap-1 px-3 py-2 rounded-full text-xs font-medium text-[var(--text-muted)] border border-[var(--border)] hover:border-[var(--primary)] hover:text-[var(--primary)] transition-colors motion-reduce:transition-none"
+      aria-label="Message buyer"
+    >
+      <MessageSquare size={12} aria-hidden="true" />
+      Message
+    </Link>
   );
 }

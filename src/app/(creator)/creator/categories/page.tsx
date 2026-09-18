@@ -6,6 +6,7 @@ import { useSupabase } from "@/lib/supabase/use-client";
 import { Category } from "@/types";
 import { Plus, Pencil, Trash2, X } from "lucide-react";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -29,7 +30,7 @@ export default function CategoriesPage() {
     }
 
     fetchCategories();
-  }, []);
+  }, [supabase]);
 
   function resetForm() {
     setName("");
@@ -85,26 +86,29 @@ export default function CategoriesPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="h-8 w-8 border-[3px] border-red-600 border-t-transparent rounded-full animate-spin" />
+      <div className="space-y-4" aria-label="Loading categories" role="status">
+        <Skeleton className="h-8 w-48 rounded-lg" />
+        <Skeleton className="h-64 rounded-xl" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <h1 className="text-2xl font-bold text-[var(--text)]">
           Categories
         </h1>
         <button
+          type="button"
           onClick={() => {
             resetForm();
             setShowForm(!showForm);
           }}
-          className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-full text-sm font-medium hover:bg-red-700 transition-colors"
+          aria-expanded={showForm}
+          className="flex items-center gap-2 px-4 py-2 bg-[var(--primary)] text-white rounded-full text-sm font-medium hover:bg-[var(--primary-hover)] transition-colors motion-reduce:transition-none"
         >
-          {showForm ? <X size={16} /> : <Plus size={16} />}
+          {showForm ? <X size={16} aria-hidden="true" /> : <Plus size={16} aria-hidden="true" />}
           {showForm ? "Cancel" : "Add Category"}
         </button>
       </div>
@@ -112,60 +116,62 @@ export default function CategoriesPage() {
       {showForm && (
         <form
           onSubmit={handleSubmit}
-          className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5 space-y-4"
+          className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5 space-y-4"
         >
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-900 dark:text-white mb-1">
+              <label htmlFor="cat-name" className="block text-sm font-medium text-[var(--text)] mb-1">
                 Name
               </label>
               <input
+                id="cat-name"
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Category name"
-                className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-600/30 focus:border-red-600 dark:bg-gray-900 dark:border-gray-700 dark:text-white"
+                className="w-full px-4 py-2 bg-[var(--background)] border border-[var(--border)] rounded-lg text-sm text-[var(--text)] placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)]"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-900 dark:text-white mb-1">
+              <label htmlFor="cat-icon" className="block text-sm font-medium text-[var(--text)] mb-1">
                 Icon (text)
               </label>
               <input
+                id="cat-icon"
                 type="text"
                 value={icon}
                 onChange={(e) => setIcon(e.target.value)}
                 placeholder="e.g. Rice, Snacks, Desserts"
-                className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500 dark:bg-gray-900 dark:border-gray-700 dark:text-white"
+                className="w-full px-4 py-2 bg-[var(--background)] border border-[var(--border)] rounded-lg text-sm text-[var(--text)] placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)]"
                 required
               />
             </div>
           </div>
           <button
             type="submit"
-            className="px-6 py-2 bg-red-600 text-white rounded-full text-sm font-medium hover:bg-red-700 transition-colors"
+            className="px-6 py-2 bg-[var(--primary)] text-white rounded-full text-sm font-medium hover:bg-[var(--primary-hover)] transition-colors motion-reduce:transition-none"
           >
             {editingId ? "Update Category" : "Add Category"}
           </button>
         </form>
       )}
 
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 dark:border-gray-700">
-                <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400">
+              <tr className="border-b border-[var(--border)]">
+                <th className="text-left px-5 py-3 font-medium text-[var(--text-muted)]">
                   Icon
                 </th>
-                <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400">
+                <th className="text-left px-5 py-3 font-medium text-[var(--text-muted)]">
                   Name
                 </th>
-                <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400">
+                <th className="text-left px-5 py-3 font-medium text-[var(--text-muted)]">
                   Created
                 </th>
-                <th className="text-right px-5 py-3 font-medium text-gray-500 dark:text-gray-400">
+                <th className="text-right px-5 py-3 font-medium text-[var(--text-muted)]">
                   Actions
                 </th>
               </tr>
@@ -175,7 +181,7 @@ export default function CategoriesPage() {
                 <tr>
                   <td
                     colSpan={4}
-                    className="px-5 py-10 text-center text-gray-500 dark:text-gray-400"
+                    className="px-5 py-10 text-center text-[var(--text-muted)]"
                   >
                     No categories yet
                   </td>
@@ -184,30 +190,34 @@ export default function CategoriesPage() {
                 categories.map((category) => (
                   <tr
                     key={category.id}
-                    className="border-b border-gray-200/50 dark:border-gray-700/50 last:border-0 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors"
+                    className="border-b border-[var(--border)]/50 last:border-0 hover:bg-[var(--background)] transition-colors motion-reduce:transition-none"
                   >
                     <td className="px-5 py-3 text-2xl">{category.icon}</td>
-                    <td className="px-5 py-3 font-medium text-gray-900 dark:text-white">
+                    <td className="px-5 py-3 font-medium text-[var(--text)]">
                       {category.name}
                     </td>
-                    <td className="px-5 py-3 text-gray-500 dark:text-gray-400">
+                    <td className="px-5 py-3 text-[var(--text-muted)]">
                       {new Date(category.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-5 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <button
+                          type="button"
                           onClick={() => startEdit(category)}
-                          className="p-1.5 rounded-lg bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 transition-colors"
+                          aria-label={`Edit ${category.name}`}
+                          className="p-1.5 rounded-lg bg-[var(--warning-soft)] text-[var(--warning)] hover:bg-[var(--warning)]/20 transition-colors motion-reduce:transition-none"
                           title="Edit"
                         >
-                          <Pencil size={16} />
+                          <Pencil size={16} aria-hidden="true" />
                         </button>
                         <button
+                          type="button"
                           onClick={() => setDeleteTarget(category.id)}
-                          className="p-1.5 rounded-lg bg-red-600/10 text-red-600 hover:bg-red-600/20 transition-colors"
+                          aria-label={`Delete ${category.name}`}
+                          className="p-1.5 rounded-lg bg-[var(--danger)]/10 text-[var(--danger)] hover:bg-[var(--danger)]/20 transition-colors motion-reduce:transition-none"
                           title="Delete"
                         >
-                          <Trash2 size={16} />
+                          <Trash2 size={16} aria-hidden="true" />
                         </button>
                       </div>
                     </td>

@@ -2,24 +2,22 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ChevronLeft, MessageSquare, Mail } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "Messages · CampusCravings",
-  description: "Chat with the seller about your order.",
+  description: "Chat with the buyer about this order.",
   robots: { index: false, follow: false },
 };
 
 /**
- * Buyer-side messaging thread for an order.
+ * Seller-side messaging thread for an order.
  *
- * Stub for Phase 1 / Phase 2 — full realtime chat (Supabase Realtime over a
- * `messages` table) is tracked as Phase 3. Until then, the page shows the
- * order context and a real mailto: link so the buyer can reach the seller.
- *
- * Symmetric seller-side copy lives at
- * `src/app/(seller)/seller/orders/[orderId]/messages/page.tsx`.
+ * Symmetric copy of `src/app/(main)/orders/[orderId]/messages/page.tsx`.
+ * Full realtime chat is Phase 3; for now we link back to the order and show a
+ * real mailto: to the buyer.
  */
-export default async function OrderMessagesPage({
+export default async function SellerOrderMessagesPage({
   params,
 }: {
   params: Promise<{ orderId: string }>;
@@ -27,33 +25,44 @@ export default async function OrderMessagesPage({
   const { orderId } = await params;
   const supabase = await createClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/");
+  }
+
   const { data: order } = await supabase
     .from("orders")
     .select(
-      "id, store_id, total_price, pickup_time, notes, store:stores(name, user_id, profile:profiles!stores_user_id_fkey(email, full_name))"
+      "id, store_id, total_price, pickup_time, notes, customer:profiles!orders_customer_id_fkey(email, full_name), store:stores(user_id)"
     )
     .eq("id", orderId)
     .single();
 
-  const seller = order?.store as
-    | {
-        name?: string;
-        profile?: { email?: string; full_name?: string } | null;
-      }
+  const store = order?.store as { user_id?: string } | null | undefined;
+
+  if (!order || store?.user_id !== user.id) {
+    redirect("/seller/orders");
+  }
+
+  const customer = order.customer as
+    | { email?: string; full_name?: string }
     | null
     | undefined;
 
-  const sellerEmail = seller?.profile?.email;
-  const sellerName = seller?.profile?.full_name || seller?.name || "the seller";
+  const buyerEmail = customer?.email;
+  const buyerName = customer?.full_name || "the buyer";
 
   const mailSubject = encodeURIComponent(
     `CampusCravings order #${orderId.slice(0, 8)}`
   );
   const mailBody = encodeURIComponent(
     [
-      `Hi ${sellerName},`,
+      `Hi ${buyerName},`,
       "",
-      "Reaching out about my CampusCravings order.",
+      "Reaching out about your CampusCravings order.",
       "",
       `Order ID: ${orderId}`,
       `Total: ৳${order?.total_price ?? "?"}`,
@@ -66,8 +75,8 @@ export default async function OrderMessagesPage({
       .join("\n")
   );
 
-  const mailtoHref = sellerEmail
-    ? `mailto:${sellerEmail}?subject=${mailSubject}&body=${mailBody}`
+  const mailtoHref = buyerEmail
+    ? `mailto:${buyerEmail}?subject=${mailSubject}&body=${mailBody}`
     : null;
 
   return (
@@ -77,7 +86,7 @@ export default async function OrderMessagesPage({
       className="max-w-2xl mx-auto px-4 md:px-6 py-4 md:py-8"
     >
       <Link
-        href={`/orders/${orderId}`}
+        href={`/seller/orders/${orderId}`}
         className="inline-flex items-center gap-1 text-sm text-[var(--text-muted)] hover:text-[var(--text)] mb-4 transition-colors motion-reduce:transition-none"
       >
         <ChevronLeft size={16} aria-hidden="true" />
@@ -96,7 +105,7 @@ export default async function OrderMessagesPage({
         </h1>
         <p className="mt-2 text-sm text-[var(--text-muted)] max-w-md mx-auto leading-relaxed">
           We&apos;re building realtime chat between buyers and sellers. In the
-          meantime, you can email {sellerName} directly using the button below
+          meantime, you can email {buyerName} directly using the button below
           — they&apos;ll see your pickup time and order details in their
           dashboard.
         </p>
@@ -111,22 +120,19 @@ export default async function OrderMessagesPage({
             <span className="text-[var(--success)] mt-0.5" aria-hidden="true">
               ✓
             </span>
-            Add pickup-time or special-request notes{" "}
-            <em className="not-italic text-[var(--text-subtle)]">
-              (before the seller accepts)
-            </em>
+            Accept or decline incoming orders from the orders tab
           </li>
           <li className="flex items-start gap-2">
             <span className="text-[var(--success)] mt-0.5" aria-hidden="true">
               ✓
             </span>
-            Cancel your order if plans change
+            Mark orders as ready when packed, completed when picked up
           </li>
           <li className="flex items-start gap-2">
             <span className="text-[var(--success)] mt-0.5" aria-hidden="true">
               ✓
             </span>
-            Rate and review after pickup
+            Toggle items as sold-out from the items page
           </li>
         </ul>
       </div>
@@ -138,25 +144,25 @@ export default async function OrderMessagesPage({
             className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[var(--primary)] text-white rounded-full text-sm font-semibold hover:bg-[var(--primary-hover)] transition-colors motion-reduce:transition-none"
           >
             <Mail size={14} aria-hidden="true" />
-            Email {sellerName}
+            Email {buyerName}
           </a>
         ) : (
           <span className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[var(--primary)]/60 text-white rounded-full text-sm font-semibold cursor-not-allowed">
             <Mail size={14} aria-hidden="true" />
-            Seller email unavailable
+            Buyer email unavailable
           </span>
         )}
         <Link
-          href={`/orders/${orderId}`}
+          href={`/seller/orders/${orderId}`}
           className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[var(--surface)] text-[var(--text)] border border-[var(--border)] rounded-full text-sm font-semibold hover:border-[var(--primary)] hover:text-[var(--primary)] transition-colors motion-reduce:transition-none"
         >
           View order details
         </Link>
         <Link
-          href="/orders"
+          href="/seller/orders"
           className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[var(--surface)] text-[var(--text)] border border-[var(--border)] rounded-full text-sm font-semibold hover:border-[var(--primary)] hover:text-[var(--primary)] transition-colors motion-reduce:transition-none"
         >
-          All my orders
+          All orders
         </Link>
       </div>
 

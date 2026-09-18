@@ -10,6 +10,8 @@ import { format } from "date-fns";
 import Link from "next/link";
 import Image from "next/image";
 import { clsx } from "clsx";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   User,
   Mail,
@@ -31,7 +33,14 @@ import {
 
 export default function ProfilePage() {
   return (
-    <Suspense fallback={<div className="max-w-3xl mx-auto px-4 py-4"><div className="animate-pulse space-y-4"><div className="h-32 bg-gray-100 dark:bg-gray-700/30 rounded-xl" /></div></div>}>
+    <Suspense
+      fallback={
+        <div className="max-w-3xl mx-auto px-4 md:px-6 py-4 space-y-4">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-40 w-full" />
+        </div>
+      }
+    >
       <ProfileContent />
     </Suspense>
   );
@@ -102,7 +111,7 @@ function ProfileContent() {
     }
 
     fetchData();
-  }, [profile]);
+  }, [profile, supabase]);
 
   async function handleMarkAllRead() {
     if (!profile) return;
@@ -132,11 +141,9 @@ function ProfileContent() {
 
   if (loading) {
     return (
-      <div className="max-w-5xl mx-auto px-4 md:px-6 py-4">
-        <div className="space-y-4">
-          <div className="h-8 w-48 bg-gray-100 dark:bg-gray-700/30 rounded-lg animate-pulse" />
-          <div className="h-40 bg-gray-100 dark:bg-gray-700/30 rounded-xl animate-pulse" />
-        </div>
+      <div className="max-w-3xl mx-auto px-4 md:px-6 py-4 space-y-4">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-40 w-full" />
       </div>
     );
   }
@@ -150,27 +157,35 @@ function ProfileContent() {
   ];
 
   return (
-    <div className="max-w-5xl mx-auto px-4 md:px-6 py-4">
-      <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-        Profile
-      </h1>
+    <div className="max-w-3xl mx-auto px-4 md:px-6 py-4">
+      <h1 className="text-xl font-bold text-[var(--text)] mb-4">Profile</h1>
 
-      <div className="flex gap-1 bg-white dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700 mb-6">
+      <div
+        role="tablist"
+        aria-label="Profile sections"
+        className="flex gap-1 bg-[var(--surface)] rounded-lg p-1 border border-[var(--border)] mb-6"
+      >
         {tabs.map((tab) => (
           <Link
             key={tab.id}
             href={`/profile?tab=${tab.id}`}
+            role="tab"
+            aria-selected={activeTab === tab.id}
+            aria-current={activeTab === tab.id ? "page" : undefined}
             className={clsx(
-              "relative flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
+              "relative flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors motion-reduce:transition-none",
               activeTab === tab.id
-                ? "bg-red-600 text-white"
-                : "text-gray-500 hover:text-gray-900 dark:hover:text-white"
+                ? "bg-[var(--primary)] text-white"
+                : "text-[var(--text-muted)] hover:text-[var(--text)]"
             )}
           >
-            <tab.icon size={14} />
+            <tab.icon size={14} aria-hidden="true" />
             {tab.label}
             {tab.badge ? (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+              <span
+                aria-label={`${tab.badge} unread`}
+                className="absolute -top-1 -right-1 w-4 h-4 bg-[var(--primary)] text-white text-[10px] font-bold rounded-full flex items-center justify-center"
+              >
                 {tab.badge}
               </span>
             ) : null}
@@ -180,7 +195,7 @@ function ProfileContent() {
 
       {activeTab === "overview" && (
         <div className="space-y-4">
-          <div className="p-5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+          <div className="p-5 bg-[var(--surface)] rounded-xl border border-[var(--border)]">
             <div className="flex items-start gap-4">
               {profile.avatar_url ? (
                 <Image
@@ -188,19 +203,22 @@ function ProfileContent() {
                   alt={profile.full_name}
                   width={96}
                   height={96}
-                  className="w-16 h-16 rounded-full object-cover border-2 border-gray-200 dark:border-gray-700"
+                  className="w-16 h-16 rounded-full object-cover border-2 border-[var(--border)]"
                 />
               ) : (
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-tomato to-turmeric flex items-center justify-center text-white text-xl font-bold">
+                <div
+                  aria-hidden="true"
+                  className="w-16 h-16 rounded-full bg-gradient-to-br from-[var(--primary)] to-[var(--accent)] flex items-center justify-center text-white text-xl font-bold"
+                >
                   {getInitials(profile.full_name)}
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <h2 className="text-lg font-bold text-gray-900 dark:text-white truncate">
+                <h2 className="text-lg font-bold text-[var(--text)] truncate">
                   {profile.full_name}
                 </h2>
-                <p className="text-sm text-gray-500 flex items-center gap-1.5 mt-0.5">
-                  <Mail size={13} />
+                <p className="text-sm text-[var(--text-muted)] flex items-center gap-1.5 mt-0.5">
+                  <Mail size={13} aria-hidden="true" />
                   {profile.email}
                 </p>
                 <div className="flex items-center gap-2 mt-2">
@@ -208,152 +226,208 @@ function ProfileContent() {
                     className={clsx(
                       "px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize",
                       profile.role === "seller"
-                        ? "bg-amber-500/20 text-amber-700"
+                        ? "bg-[var(--warning-soft)] text-[var(--warning)]"
                         : profile.role === "creator"
-                        ? "bg-red-600/20 text-red-600"
-                        : "bg-gray-100 text-gray-500"
+                          ? "bg-[var(--primary-soft)] text-[var(--primary)]"
+                          : "bg-[var(--background)] text-[var(--text-muted)]"
                     )}
                   >
                     {profile.role}
                   </span>
+                  {profile.role === "seller" && !profile.is_approved && (
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--warning-soft)] text-[var(--warning)]">
+                      Pending approval
+                    </span>
+                  )}
                 </div>
               </div>
               <Link
                 href="/profile/edit"
-                className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-500 border border-gray-200 rounded-lg hover:border-red-600/30 hover:text-red-600 transition-colors dark:border-gray-700"
+                className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-[var(--text-muted)] border border-[var(--border)] rounded-lg hover:border-[var(--primary)]/30 hover:text-[var(--primary)] transition-colors motion-reduce:transition-none"
               >
-                <Edit size={12} />
+                <Edit size={12} aria-hidden="true" />
                 Edit
               </Link>
             </div>
           </div>
 
-          {profile.role === "seller" && store && (
-            <div className="p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                <StoreIcon size={14} />
-                Seller Links
+          {profile.role === "seller" && profile.is_approved && store && (
+            <div className="p-4 bg-[var(--surface)] rounded-xl border border-[var(--border)]">
+              <h3 className="text-sm font-semibold text-[var(--text)] mb-3 flex items-center gap-2">
+                <StoreIcon size={14} aria-hidden="true" />
+                Seller links
               </h3>
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <Link
                   href={`/feed/${store.id}`}
-                  className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  className="flex items-center justify-between p-3 rounded-xl hover:bg-[var(--background)] transition-colors motion-reduce:transition-none"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-amber-500/10">
-                      <StoreIcon size={16} className="text-amber-500" />
+                    <div className="p-2 rounded-lg bg-[var(--warning-soft)]">
+                      <StoreIcon
+                        size={16}
+                        className="text-[var(--warning)]"
+                        aria-hidden="true"
+                      />
                     </div>
-                    <span className="text-sm font-medium text-gray-900 dark:text-white">
-                      My Store
+                    <span className="text-sm font-medium text-[var(--text)]">
+                      My store
                     </span>
                   </div>
-                  <ChevronRight size={16} className="text-gray-500" />
+                  <ChevronRight
+                    size={16}
+                    className="text-[var(--text-muted)]"
+                    aria-hidden="true"
+                  />
                 </Link>
                 <Link
                   href="/seller/dashboard"
-                  className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  className="flex items-center justify-between p-3 rounded-xl hover:bg-[var(--background)] transition-colors motion-reduce:transition-none"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-red-600/10">
-                      <BarChart3 size={16} className="text-red-600" />
+                    <div className="p-2 rounded-lg bg-[var(--primary-soft)]">
+                      <BarChart3
+                        size={16}
+                        className="text-[var(--primary)]"
+                        aria-hidden="true"
+                      />
                     </div>
-                    <span className="text-sm font-medium text-gray-900 dark:text-white">
-                      Seller Dashboard
+                    <span className="text-sm font-medium text-[var(--text)]">
+                      Seller dashboard
                     </span>
                   </div>
-                  <ChevronRight size={16} className="text-gray-500" />
+                  <ChevronRight
+                    size={16}
+                    className="text-[var(--text-muted)]"
+                    aria-hidden="true"
+                  />
                 </Link>
               </div>
             </div>
           )}
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+            <div className="p-4 bg-[var(--surface)] rounded-xl border border-[var(--border)]">
               <div className="flex items-center gap-2 mb-2">
-                <div className="p-1.5 rounded-lg bg-red-600/10">
-                  <ShoppingBag size={14} className="text-red-600" />
+                <div className="p-1.5 rounded-lg bg-[var(--primary-soft)]">
+                  <ShoppingBag
+                    size={14}
+                    className="text-[var(--primary)]"
+                    aria-hidden="true"
+                  />
                 </div>
-                <span className="text-xs text-gray-500">Total Orders</span>
+                <span className="text-xs text-[var(--text-muted)]">
+                  Total orders
+                </span>
               </div>
-              <p className="text-xl font-bold text-gray-900 dark:text-white font-mono">
+              <p className="text-xl font-bold text-[var(--text)] font-mono">
                 {stats.orders}
               </p>
             </div>
             {profile.role === "seller" && (
-              <div className="p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+              <div className="p-4 bg-[var(--surface)] rounded-xl border border-[var(--border)]">
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="p-1.5 rounded-lg bg-amber-500/10">
-                    <Package size={14} className="text-amber-500" />
+                  <div className="p-1.5 rounded-lg bg-[var(--warning-soft)]">
+                    <Package
+                      size={14}
+                      className="text-[var(--warning)]"
+                      aria-hidden="true"
+                    />
                   </div>
-                  <span className="text-xs text-gray-500">Items Sold</span>
+                  <span className="text-xs text-[var(--text-muted)]">
+                    Items sold
+                  </span>
                 </div>
-                <p className="text-xl font-bold text-gray-900 dark:text-white font-mono">
+                <p className="text-xl font-bold text-[var(--text)] font-mono">
                   {stats.itemsSold}
                 </p>
               </div>
             )}
           </div>
 
-          <div className="p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-              <Settings size={14} />
+          <div className="p-4 bg-[var(--surface)] rounded-xl border border-[var(--border)]">
+            <h3 className="text-sm font-semibold text-[var(--text)] mb-3 flex items-center gap-2">
+              <Settings size={14} aria-hidden="true" />
               Settings
             </h3>
-            <div className="space-y-2">
+            <div className="space-y-1">
               <Link
                 href="/profile/edit"
-                className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                className="flex items-center justify-between p-3 rounded-xl hover:bg-[var(--background)] transition-colors motion-reduce:transition-none"
               >
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-bark/10">
-                    <User size={16} className="text-gray-500" />
+                  <div className="p-2 rounded-lg bg-[var(--background)]">
+                    <User
+                      size={16}
+                      className="text-[var(--text-muted)]"
+                      aria-hidden="true"
+                    />
                   </div>
-                  <span className="text-sm text-gray-900 dark:text-white">
-                    Edit Name & Photo
+                  <span className="text-sm text-[var(--text)]">
+                    Edit name &amp; photo
                   </span>
                 </div>
-                <ChevronRight size={16} className="text-gray-500" />
+                <ChevronRight
+                  size={16}
+                  className="text-[var(--text-muted)]"
+                  aria-hidden="true"
+                />
               </Link>
               <button
+                type="button"
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+                className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-[var(--background)] transition-colors motion-reduce:transition-none"
               >
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-amber-500/10">
+                  <div className="p-2 rounded-lg bg-[var(--warning-soft)]">
                     {theme === "dark" ? (
-                      <Sun size={16} className="text-amber-500" />
+                      <Sun
+                        size={16}
+                        className="text-[var(--warning)]"
+                        aria-hidden="true"
+                      />
                     ) : (
-                      <Moon size={16} className="text-amber-500" />
+                      <Moon
+                        size={16}
+                        className="text-[var(--warning)]"
+                        aria-hidden="true"
+                      />
                     )}
                   </div>
-                  <span className="text-sm text-gray-900 dark:text-white">
-                    {theme === "dark" ? "Light Mode" : "Dark Mode"}
+                  <span className="text-sm text-[var(--text)]">
+                    {theme === "dark" ? "Light mode" : "Dark mode"}
                   </span>
                 </div>
                 <div
                   className={clsx(
-                    "w-9 h-5 rounded-full transition-colors relative",
-                    theme === "dark" ? "bg-red-600" : "bg-bark/30"
+                    "w-9 h-5 rounded-full transition-colors motion-reduce:transition-none relative",
+                    theme === "dark" ? "bg-[var(--primary)]" : "bg-[var(--border-strong)]"
                   )}
                 >
                   <div
                     className={clsx(
-                      "absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform",
+                      "absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform motion-reduce:transition-none",
                       theme === "dark" ? "translate-x-4" : "translate-x-0.5"
                     )}
                   />
                 </div>
               </button>
               <button
+                type="button"
                 onClick={handleSignOut}
-                className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-red-600/5 transition-colors"
+                className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-[var(--danger)]/5 transition-colors motion-reduce:transition-none"
               >
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-red-600/10">
-                    <LogOut size={16} className="text-red-600" />
+                  <div className="p-2 rounded-lg bg-[var(--danger)]/10">
+                    <LogOut
+                      size={16}
+                      className="text-[var(--danger)]"
+                      aria-hidden="true"
+                    />
                   </div>
-                  <span className="text-sm text-red-600 font-medium">
-                    Sign Out
+                  <span className="text-sm text-[var(--danger)] font-medium">
+                    Sign out
                   </span>
                 </div>
               </button>
@@ -363,24 +437,25 @@ function ProfileContent() {
       )}
 
       {activeTab === "notifications" && (
-        <div className="space-y-2">
+        <div className="space-y-2" role="tabpanel" aria-label="Notifications">
           {notifications.length > 0 && (
             <button
+              type="button"
               onClick={handleMarkAllRead}
-              className="text-xs text-red-600 font-medium hover:underline mb-2"
+              className="text-xs text-[var(--primary)] font-medium hover:underline mb-2"
             >
               Mark all as read
             </button>
           )}
           {notifications.length > 0 ? (
             notifications.map((notif) => (
-              <div
+              <article
                 key={notif.id}
                 className={clsx(
-                  "p-4 bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 transition-colors",
+                  "p-4 bg-[var(--surface)] rounded-xl border transition-colors motion-reduce:transition-none",
                   notif.is_read
-                    ? "border-gray-200"
-                    : "border-amber-500/30 bg-amber-500/5"
+                    ? "border-[var(--border)]"
+                    : "border-[var(--warning)]/30 bg-[var(--warning-soft)]/40"
                 )}
               >
                 <div className="flex items-start gap-3">
@@ -388,59 +463,58 @@ function ProfileContent() {
                     {notif.is_read ? (
                       <CheckCircle2
                         size={16}
-                        className="text-gray-300"
+                        className="text-[var(--text-subtle)]"
+                        aria-label="Read"
                       />
                     ) : (
                       <Circle
                         size={16}
-                        className="text-amber-500 fill-turmeric/20"
+                        className="text-[var(--warning)] fill-[var(--warning)]/20"
+                        aria-label="Unread"
                       />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                    <p className="text-sm font-medium text-[var(--text)]">
                       {notif.title}
                     </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
+                    <p className="text-xs text-[var(--text-muted)] mt-0.5">
                       {notif.message}
                     </p>
-                    <p className="text-[10px] text-gray-400 mt-1">
+                    <p className="text-[10px] text-[var(--text-subtle)] mt-1">
                       {format(new Date(notif.created_at), "MMM d, h:mm a")}
                     </p>
                   </div>
                   {notif.link && (
                     <Link
                       href={notif.link}
-                      className="text-xs text-red-600 font-medium shrink-0"
+                      className="text-xs text-[var(--primary)] font-medium shrink-0 hover:underline"
                     >
                       View
                     </Link>
                   )}
                 </div>
-              </div>
+              </article>
             ))
           ) : (
-            <div className="text-center py-16">
-              <Bell size={40} className="mx-auto mb-3 text-gray-300" />
-              <p className="text-sm text-gray-500">No notifications yet</p>
-            </div>
+            <EmptyState
+              icon={Bell}
+              title="No notifications yet"
+              message="When sellers respond to your orders, you'll see updates here."
+            />
           )}
         </div>
       )}
 
       {activeTab === "favorites" && (
-        <div className="text-center py-16">
-          <Heart size={40} className="mx-auto mb-3 text-gray-300" />
-          <p className="text-sm text-gray-500 mb-3">
-            View your saved items and stores
-          </p>
-          <Link
-            href="/profile/favorites"
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-red-600 text-white rounded-full text-sm font-semibold hover:bg-red-700 transition-colors"
-          >
-            <Heart size={16} />
-            View Favorites
-          </Link>
+        <div role="tabpanel" aria-label="Favorites">
+          <EmptyState
+            icon={Heart}
+            title="Your favorites live on their own page"
+            message="Browse the feed and tap the heart icon to save dishes and stores you love."
+            ctaLabel="View my favorites"
+            ctaHref="/profile/favorites"
+          />
         </div>
       )}
     </div>

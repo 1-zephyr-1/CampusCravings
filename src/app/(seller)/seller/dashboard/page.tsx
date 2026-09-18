@@ -9,6 +9,9 @@ import { ORDER_STATUSES } from "@/lib/constants";
 import { format } from "date-fns";
 import Link from "next/link";
 import { clsx } from "clsx";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
+import { SectionHeader } from "@/components/ui/section-header";
 import {
   ShoppingBag,
   DollarSign,
@@ -17,6 +20,7 @@ import {
   Plus,
   Package,
   Store as StoreIcon,
+  type LucideIcon,
 } from "lucide-react";
 
 interface DashboardStats {
@@ -25,6 +29,19 @@ interface DashboardStats {
   activeItems: number;
   pendingOrders: number;
 }
+
+interface StatCard {
+  label: string;
+  value: string | number;
+  icon: LucideIcon;
+  tone: "primary" | "success" | "warning";
+}
+
+const TONE_CLASSES: Record<StatCard["tone"], { text: string; bg: string }> = {
+  primary: { text: "text-[var(--primary)]", bg: "bg-[var(--primary-soft)]" },
+  success: { text: "text-[var(--success)]", bg: "bg-[var(--success)]/10" },
+  warning: { text: "text-[var(--warning)]", bg: "bg-[var(--warning-soft)]" },
+};
 
 export default function SellerDashboardPage() {
   const { profile } = useAuth();
@@ -59,7 +76,9 @@ export default function SellerDashboardPage() {
       const [ordersResult, itemsResult] = await Promise.all([
         supabase
           .from("orders")
-          .select("*, customer:profiles!orders_customer_id_fkey(full_name), items:order_items(*, item:food_items(name))")
+          .select(
+            "*, customer:profiles!orders_customer_id_fkey(full_name), items:order_items(*, item:food_items(name))"
+          )
           .eq("store_id", storeData.id)
           .order("created_at", { ascending: false }),
         supabase
@@ -92,21 +111,16 @@ export default function SellerDashboardPage() {
     }
 
     fetchDashboard();
-  }, [profile]);
+  }, [profile, supabase]);
 
   if (loading) {
     return (
-      <div className="max-w-5xl mx-auto px-4 md:px-6 py-4">
-        <div className="space-y-4">
-        <div className="h-8 w-48 bg-gray-200 rounded-lg animate-pulse" />
+      <div className="max-w-5xl mx-auto px-4 md:px-6 py-4 space-y-4">
+        <Skeleton className="h-8 w-48 rounded-lg" />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[...Array(4)].map((_, i) => (
-            <div
-              key={i}
-              className="h-24 bg-gray-200 rounded-xl animate-pulse"
-            />
+            <Skeleton key={i} className="h-24 rounded-xl" />
           ))}
-          </div>
         </div>
       </div>
     );
@@ -114,53 +128,42 @@ export default function SellerDashboardPage() {
 
   if (!store) {
     return (
-      <div className="max-w-5xl mx-auto px-4 md:px-6 py-16 text-center">
-        <StoreIcon size={48} className="mx-auto mb-4 text-gray-300" />
-        <h2 className="text-lg font-bold text-gray-900 mb-2">
-          No Store Found
-        </h2>
-        <p className="text-sm text-gray-500 mb-4">
-          You need to set up your store first.
-        </p>
-        <Link
-          href="/seller/storefront"
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-red-600 text-white rounded-full text-sm font-semibold hover:bg-red-700 transition-colors"
-        >
-          <StoreIcon size={16} />
-          Set Up Store
-        </Link>
+      <div className="max-w-5xl mx-auto px-4 md:px-6 py-16">
+        <EmptyState
+          icon={StoreIcon}
+          title="No store found"
+          message="Set up your storefront first so buyers can find you on the feed."
+          ctaLabel="Set up store"
+          ctaHref="/seller/storefront"
+        />
       </div>
     );
   }
 
-  const statCards = [
+  const statCards: StatCard[] = [
     {
-      label: "Total Orders",
+      label: "Total orders",
       value: stats.totalOrders,
       icon: ShoppingBag,
-      color: "text-red-600",
-      bg: "bg-red-50",
+      tone: "primary",
     },
     {
       label: "Revenue",
       value: `৳${stats.revenue.toFixed(0)}`,
       icon: DollarSign,
-      color: "text-green-600",
-      bg: "bg-green-50",
+      tone: "success",
     },
     {
-      label: "Active Items",
+      label: "Active items",
       value: stats.activeItems,
       icon: UtensilsCrossed,
-      color: "text-amber-500",
-      bg: "bg-amber-50",
+      tone: "warning",
     },
     {
       label: "Pending",
       value: stats.pendingOrders,
       icon: Clock,
-      color: "text-red-600",
-      bg: "bg-red-50",
+      tone: "primary",
     },
   ];
 
@@ -168,17 +171,15 @@ export default function SellerDashboardPage() {
     <div className="max-w-5xl mx-auto px-4 md:px-6 py-4">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">
-            Dashboard
-          </h1>
-          <p className="text-sm text-gray-500">{store.name}</p>
+          <h1 className="text-xl font-bold text-[var(--text)]">Dashboard</h1>
+          <p className="text-sm text-[var(--text-muted)]">{store.name}</p>
         </div>
         <span
           className={clsx(
             "px-3 py-1 rounded-full text-xs font-semibold",
             store.is_open
-              ? "bg-green-100 text-green-600"
-              : "bg-gray-100 text-gray-500"
+              ? "bg-[var(--success)]/15 text-[var(--success)]"
+              : "bg-[var(--background)] text-[var(--text-muted)]"
           )}
         >
           {store.is_open ? "Open" : "Closed"}
@@ -186,126 +187,132 @@ export default function SellerDashboardPage() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        {statCards.map((card) => (
-          <div
-            key={card.label}
-            className="p-4 bg-white rounded-xl border border-gray-200"
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <div className={clsx("p-1.5 rounded-lg", card.bg)}>
-                <card.icon size={14} className={card.color} />
+        {statCards.map((card) => {
+          const tone = TONE_CLASSES[card.tone];
+          return (
+            <div
+              key={card.label}
+              className="p-4 bg-[var(--surface)] rounded-xl border border-[var(--border)]"
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <div className={clsx("p-1.5 rounded-lg", tone.bg)}>
+                  <card.icon size={14} className={tone.text} aria-hidden="true" />
+                </div>
+                <span className="text-xs text-[var(--text-muted)]">
+                  {card.label}
+                </span>
               </div>
-              <span className="text-xs text-gray-500">{card.label}</span>
+              <p className="text-xl font-bold text-[var(--text)] font-mono">
+                {card.value}
+              </p>
             </div>
-            <p className="text-xl font-bold text-gray-900 font-mono">
-              {card.value}
-            </p>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">
-        <div className="p-4 bg-white rounded-xl border border-gray-200">
-          <h2 className="text-sm font-semibold text-gray-900 mb-3">
-            Quick Actions
-          </h2>
-          <div className="space-y-2">
+        <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)]">
+          <SectionHeader title="Quick actions" />
+          <div className="p-4 pt-0 space-y-1">
             <Link
               href="/seller/new-item"
-              className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-3 p-3 rounded-xl hover:bg-[var(--background)] transition-colors motion-reduce:transition-none"
             >
-              <div className="p-2 rounded-lg bg-red-50">
-                <Plus size={16} className="text-red-600" />
+              <div className="p-2 rounded-lg bg-[var(--primary-soft)]">
+                <Plus size={16} className="text-[var(--primary)]" aria-hidden="true" />
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-900">
-                  Create Item
+                <p className="text-sm font-medium text-[var(--text)]">Create item</p>
+                <p className="text-xs text-[var(--text-muted)]">
+                  Add a new food listing
                 </p>
-                <p className="text-xs text-gray-500">Add a new food listing</p>
               </div>
             </Link>
             <Link
               href="/seller/orders"
-              className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-3 p-3 rounded-xl hover:bg-[var(--background)] transition-colors motion-reduce:transition-none"
             >
-              <div className="p-2 rounded-lg bg-amber-50">
-                <Package size={16} className="text-amber-500" />
+              <div className="p-2 rounded-lg bg-[var(--warning-soft)]">
+                <Package size={16} className="text-[var(--warning)]" aria-hidden="true" />
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-900">
-                  View Orders
+                <p className="text-sm font-medium text-[var(--text)]">View orders</p>
+                <p className="text-xs text-[var(--text-muted)]">
+                  Manage incoming orders
                 </p>
-                <p className="text-xs text-gray-500">Manage incoming orders</p>
               </div>
             </Link>
             <Link
               href="/seller/storefront"
-              className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors"
+              className="flex items-center gap-3 p-3 rounded-xl hover:bg-[var(--background)] transition-colors motion-reduce:transition-none"
             >
-              <div className="p-2 rounded-lg bg-green-50">
-                <StoreIcon size={16} className="text-green-600" />
+              <div className="p-2 rounded-lg bg-[var(--success)]/10">
+                <StoreIcon size={16} className="text-[var(--success)]" aria-hidden="true" />
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-900">
-                  Edit Storefront
+                <p className="text-sm font-medium text-[var(--text)]">
+                  Edit storefront
                 </p>
-                <p className="text-xs text-gray-500">Update your store profile</p>
+                <p className="text-xs text-[var(--text-muted)]">
+                  Update your store profile
+                </p>
               </div>
             </Link>
           </div>
         </div>
 
-        <div className="p-4 bg-white rounded-xl border border-gray-200">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-gray-900">
-              Recent Orders
+        <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)]">
+          <div className="flex items-center justify-between p-4 pb-2">
+            <h2 className="text-sm font-semibold text-[var(--text)]">
+              Recent orders
             </h2>
             <Link
               href="/seller/orders"
-              className="text-xs text-red-600 font-medium hover:underline"
+              className="text-xs text-[var(--primary)] font-medium hover:underline"
             >
               View all
             </Link>
           </div>
           {recentOrders.length > 0 ? (
-            <div className="space-y-2">
+            <ul role="list" className="space-y-1 px-4 pb-4">
               {recentOrders.map((order) => (
-                <div
+                <li
                   key={order.id}
-                  className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50"
+                  className="flex items-center justify-between p-2.5 rounded-xl bg-[var(--background)]"
                 >
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={clsx(
-                          "px-1.5 py-0.5 rounded-full text-[10px] font-semibold uppercase",
-                          ORDER_STATUSES[order.status]?.color
-                        )}
-                      >
-                        {ORDER_STATUSES[order.status]?.label}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-0.5 truncate">
+                    <span
+                      className={clsx(
+                        "px-1.5 py-0.5 rounded-full text-[10px] font-semibold uppercase",
+                        ORDER_STATUSES[order.status]?.color
+                      )}
+                    >
+                      {ORDER_STATUSES[order.status]?.label}
+                    </span>
+                    <p className="text-xs text-[var(--text-muted)] mt-1 truncate">
                       {order.customer?.full_name || "Customer"}
                       {" · "}
                       {order.items?.length || 0} items
                     </p>
                   </div>
                   <div className="text-right shrink-0 ml-3">
-                    <p className="text-sm font-bold font-mono text-red-600">
+                    <p className="text-sm font-bold font-mono text-[var(--primary)]">
                       ৳{order.total_price.toFixed(0)}
                     </p>
-                    <p className="text-[10px] text-gray-400">
+                    <p className="text-[10px] text-[var(--text-subtle)]">
                       {format(new Date(order.created_at), "h:mm a")}
                     </p>
                   </div>
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           ) : (
-            <div className="text-center py-8">
-              <Package size={24} className="mx-auto mb-2 text-gray-300" />
-              <p className="text-xs text-gray-500">No orders yet</p>
+            <div className="px-4 pb-4">
+              <EmptyState
+                icon={Package}
+                title="No orders yet"
+                message="Once a buyer pre-orders from your store, you'll see it here."
+              />
             </div>
           )}
         </div>

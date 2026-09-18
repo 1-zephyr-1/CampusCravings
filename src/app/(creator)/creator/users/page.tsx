@@ -6,6 +6,8 @@ import { useSupabase } from "@/lib/supabase/use-client";
 import { Profile } from "@/types";
 import { Shield, ShieldOff, Ban } from "lucide-react";
 import { Pagination } from "@/components/ui/pagination";
+import { Skeleton } from "@/components/ui/skeleton";
+import { clsx } from "clsx";
 
 export default function UsersPage() {
   const [users, setUsers] = useState<Profile[]>([]);
@@ -30,7 +32,7 @@ export default function UsersPage() {
     }
 
     fetchUsers();
-  }, [page]);
+  }, [page, supabase]);
 
   async function toggleBan(userId: string, currentBanned: boolean) {
     await supabase
@@ -52,35 +54,40 @@ export default function UsersPage() {
   });
 
   const roleColors: Record<string, string> = {
-    customer: "bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-300",
-    seller: "bg-amber-500/20 text-amber-600",
-    creator: "bg-red-600/20 text-red-600",
+    customer: "bg-[var(--background)] text-[var(--text-muted)] border border-[var(--border)]",
+    seller: "bg-[var(--warning-soft)] text-[var(--warning)]",
+    creator: "bg-[var(--primary-soft)] text-[var(--primary)]",
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="h-8 w-8 border-[3px] border-red-600 border-t-transparent rounded-full animate-spin" />
+      <div className="space-y-4" aria-label="Loading users" role="status">
+        <Skeleton className="h-8 w-48 rounded-lg" />
+        <Skeleton className="h-64 rounded-xl" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <h1 className="text-2xl font-bold text-[var(--text)]">
           Users
         </h1>
-        <div className="flex gap-2">
+        <div role="tablist" aria-label="Filter users" className="flex gap-2">
           {(["all", "active", "banned"] as const).map((f) => (
             <button
               key={f}
+              type="button"
+              role="tab"
+              aria-selected={filter === f}
               onClick={() => setFilter(f)}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              className={clsx(
+                "px-4 py-1.5 rounded-full text-sm font-medium transition-colors motion-reduce:transition-none",
                 filter === f
-                  ? "bg-red-600 text-white"
-                  : "bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300"
-              }`}
+                  ? "bg-[var(--primary)] text-white"
+                  : "bg-[var(--background)] text-[var(--text-muted)] hover:bg-[var(--border)]"
+              )}
             >
               {f.charAt(0).toUpperCase() + f.slice(1)}
             </button>
@@ -88,24 +95,24 @@ export default function UsersPage() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 dark:border-gray-700">
-                <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400">
+              <tr className="border-b border-[var(--border)]">
+                <th className="text-left px-5 py-3 font-medium text-[var(--text-muted)]">
                   User
                 </th>
-                <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400">
+                <th className="text-left px-5 py-3 font-medium text-[var(--text-muted)]">
                   Role
                 </th>
-                <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400">
+                <th className="text-left px-5 py-3 font-medium text-[var(--text-muted)]">
                   Status
                 </th>
-                <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400">
+                <th className="text-left px-5 py-3 font-medium text-[var(--text-muted)]">
                   Joined
                 </th>
-                <th className="text-right px-5 py-3 font-medium text-gray-500 dark:text-gray-400">
+                <th className="text-right px-5 py-3 font-medium text-[var(--text-muted)]">
                   Actions
                 </th>
               </tr>
@@ -115,7 +122,7 @@ export default function UsersPage() {
                 <tr>
                   <td
                     colSpan={5}
-                    className="px-5 py-10 text-center text-gray-500 dark:text-gray-400"
+                    className="px-5 py-10 text-center text-[var(--text-muted)]"
                   >
                     No users found
                   </td>
@@ -124,18 +131,21 @@ export default function UsersPage() {
                 filtered.map((user) => (
                   <tr
                     key={user.id}
-                    className="border-b border-gray-200/50 dark:border-gray-700/50 last:border-0 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors"
+                    className="border-b border-[var(--border)]/50 last:border-0 hover:bg-[var(--background)] transition-colors motion-reduce:transition-none"
                   >
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-red-600/20 flex items-center justify-center text-red-600 text-sm font-bold shrink-0">
+                        <div
+                          aria-hidden="true"
+                          className="w-8 h-8 rounded-full bg-[var(--primary-soft)] flex items-center justify-center text-[var(--primary)] text-sm font-bold shrink-0"
+                        >
                           {user.full_name?.[0] || user.email[0].toUpperCase()}
                         </div>
                         <div className="min-w-0">
-                          <p className="font-medium text-gray-900 dark:text-white truncate">
+                          <p className="font-medium text-[var(--text)] truncate">
                             {user.full_name || "N/A"}
                           </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                          <p className="text-xs text-[var(--text-muted)] truncate">
                             {user.email}
                           </p>
                         </div>
@@ -143,48 +153,54 @@ export default function UsersPage() {
                     </td>
                     <td className="px-5 py-3">
                       <span
-                        className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${
+                        className={clsx(
+                          "inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium capitalize",
                           roleColors[user.role] || roleColors.customer
-                        }`}
+                        )}
                       >
                         {user.role}
                       </span>
                     </td>
                     <td className="px-5 py-3">
                       <span
-                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        className={clsx(
+                          "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium",
                           user.is_banned
-                            ? "bg-red-600/20 text-red-600"
-                            : "bg-green-600/20 text-green-600"
-                        }`}
+                            ? "bg-[var(--danger)]/20 text-[var(--danger)]"
+                            : "bg-[var(--success)]/20 text-[var(--success)]"
+                        )}
                       >
                         {user.is_banned ? (
                           <>
-                            <Ban size={10} /> Banned
+                            <Ban size={10} aria-hidden="true" /> Banned
                           </>
                         ) : (
                           "Active"
                         )}
                       </span>
                     </td>
-                    <td className="px-5 py-3 text-gray-500 dark:text-gray-400">
+                    <td className="px-5 py-3 text-[var(--text-muted)]">
                       {new Date(user.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-5 py-3 text-right">
                       {user.role !== "creator" && (
                         <button
+                          type="button"
                           onClick={() => toggleBan(user.id, user.is_banned)}
-                          className={`p-1.5 rounded-lg transition-colors ${
+                          aria-label={user.is_banned ? `Unban ${user.full_name || user.email}` : `Ban ${user.full_name || user.email}`}
+                          aria-pressed={user.is_banned}
+                          className={clsx(
+                            "p-1.5 rounded-lg transition-colors motion-reduce:transition-none",
                             user.is_banned
-                              ? "bg-green-600/10 text-green-600 hover:bg-green-600/20"
-                              : "bg-red-600/10 text-red-600 hover:bg-red-600/20"
-                          }`}
+                              ? "bg-[var(--success)]/10 text-[var(--success)] hover:bg-[var(--success)]/20"
+                              : "bg-[var(--danger)]/10 text-[var(--danger)] hover:bg-[var(--danger)]/20"
+                          )}
                           title={user.is_banned ? "Unban" : "Ban"}
                         >
                           {user.is_banned ? (
-                            <ShieldOff size={16} />
+                            <ShieldOff size={16} aria-hidden="true" />
                           ) : (
-                            <Shield size={16} />
+                            <Shield size={16} aria-hidden="true" />
                           )}
                         </button>
                       )}

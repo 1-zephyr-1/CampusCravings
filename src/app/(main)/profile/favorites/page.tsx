@@ -6,7 +6,17 @@ import { useAuth } from "@/components/ui/auth-provider";
 import { Favorite, FoodItem, Store } from "@/types";
 import Link from "next/link";
 import Image from "next/image";
-import { ChevronLeft, Heart, MapPin, Star, Utensils } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
+import { SectionHeader } from "@/components/ui/section-header";
+import {
+  ChevronLeft,
+  Heart,
+  MapPin,
+  Star,
+  Utensils,
+  Store as StoreIcon,
+} from "lucide-react";
 
 interface FavoriteWithItem extends Favorite {
   item?: FoodItem;
@@ -26,7 +36,9 @@ export default function FavoritesPage() {
     async function fetchFavorites() {
       const { data: favs } = await supabase
         .from("favorites")
-        .select("*, item:food_items!favorites_item_id_fkey(*, store:stores!food_items_store_id_fkey(id, name, is_open)), store:stores!favorites_store_id_fkey(*, profile:profiles!stores_user_id_fkey(full_name))")
+        .select(
+          "*, item:food_items!favorites_item_id_fkey(*, store:stores!food_items_store_id_fkey(id, name, is_open)), store:stores!favorites_store_id_fkey(*, profile:profiles!stores_user_id_fkey(full_name))"
+        )
         .eq("user_id", profile!.id)
         .order("created_at", { ascending: false });
 
@@ -35,7 +47,7 @@ export default function FavoritesPage() {
     }
 
     fetchFavorites();
-  }, [profile]);
+  }, [profile, supabase]);
 
   async function handleUnfavorite(fav: FavoriteWithItem) {
     if (!profile) return;
@@ -58,17 +70,12 @@ export default function FavoritesPage() {
 
   if (loading) {
     return (
-      <div className="max-w-5xl mx-auto px-4 md:px-6 py-4">
-        <div className="space-y-4">
-          <div className="h-8 w-48 bg-gray-200/30 dark:bg-gray-700/30 rounded-lg animate-pulse" />
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {[...Array(4)].map((_, i) => (
-              <div
-                key={i}
-                className="h-48 bg-gray-200/30 dark:bg-gray-700/30 rounded-xl animate-pulse"
-              />
-            ))}
-          </div>
+      <div className="max-w-5xl mx-auto px-4 md:px-6 py-4 space-y-4">
+        <Skeleton className="h-8 w-48" />
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-48" />
+          ))}
         </div>
       </div>
     );
@@ -81,40 +88,39 @@ export default function FavoritesPage() {
     <div className="max-w-5xl mx-auto px-4 md:px-6 py-4">
       <Link
         href="/profile"
-        className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 dark:hover:text-gray-50 mb-4"
+        className="inline-flex items-center gap-1 text-sm text-[var(--text-muted)] hover:text-[var(--text)] mb-4 transition-colors motion-reduce:transition-none"
       >
-        <ChevronLeft size={16} />
-        Back
+        <ChevronLeft size={16} aria-hidden="true" />
+        Back to profile
       </Link>
 
-      <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50 mb-6 flex items-center gap-2">
-        <Heart size={20} className="text-red-600" />
+      <h1 className="text-xl font-bold text-[var(--text)] mb-6 flex items-center gap-2">
+        <Heart size={20} className="text-[var(--primary)]" aria-hidden="true" />
         Favorites
       </h1>
 
       {favorites.length === 0 ? (
-        <div className="text-center py-16">
-          <Heart size={40} className="mx-auto mb-3 text-gray-300" />
-          <p className="text-sm text-gray-500 mb-3">No favorites yet</p>
-          <Link
-            href="/feed"
-            className="text-sm text-red-600 font-medium hover:underline"
-          >
-            Browse the feed
-          </Link>
-        </div>
+        <EmptyState
+          icon={Heart}
+          title="No favorites yet"
+          message="Tap the heart icon on a dish or store to save it for later."
+          ctaLabel="Browse the feed"
+          ctaHref="/feed"
+        />
       ) : (
         <div className="space-y-6">
           {itemFavorites.length > 0 && (
-            <div>
-              <h2 className="accent-line text-sm font-semibold text-gray-900 dark:text-gray-50 mb-3">
-                Items
-              </h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <section aria-labelledby="fav-items-heading">
+              <SectionHeader
+                title={`Dishes (${itemFavorites.length})`}
+                id="fav-items-heading"
+                variant="accent-line"
+              />
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
                 {itemFavorites.map((fav) => (
-                  <div
+                  <article
                     key={`item-${fav.item_id}`}
-                    className="relative bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden group"
+                    className="relative bg-[var(--surface)] rounded-xl border border-[var(--border)] overflow-hidden group"
                   >
                     {fav.item?.photo_urls?.[0] ? (
                       <Image
@@ -126,51 +132,63 @@ export default function FavoritesPage() {
                         sizes="(max-width: 768px) 50vw, 33vw"
                       />
                     ) : (
-                      <div className="w-full h-32 bg-gradient-to-br from-red-600/10 to-amber-500/10 flex items-center justify-center">
-                        <Utensils size={28} className="text-gray-400" />
+                      <div
+                        aria-hidden="true"
+                        className="w-full h-32 bg-gradient-to-br from-[var(--primary-soft)] to-[var(--warning-soft)] flex items-center justify-center"
+                      >
+                        <Utensils
+                          size={28}
+                          className="text-[var(--text-subtle)]"
+                        />
                       </div>
                     )}
                     <div className="p-3">
                       <Link
                         href={`/feed/${fav.store?.id}/${fav.item_id}`}
-                        className="text-sm font-semibold text-gray-900 dark:text-gray-50 hover:text-red-600 transition-colors line-clamp-1"
+                        className="text-sm font-semibold text-[var(--text)] hover:text-[var(--primary)] transition-colors motion-reduce:transition-none line-clamp-1"
                       >
                         {fav.item?.name}
                       </Link>
-                      <p className="text-xs text-gray-500 mt-0.5">
+                      <p className="text-xs text-[var(--text-muted)] mt-0.5">
                         {fav.store?.name}
                       </p>
                       <div className="flex items-center justify-between mt-2">
-                        <span className="price-tag text-sm font-bold font-mono text-red-600">
+                        <span className="text-sm font-bold font-mono text-[var(--primary)]">
                           ৳{fav.item?.price}
                         </span>
                         <button
+                          type="button"
                           onClick={() => handleUnfavorite(fav)}
-                          className="p-1.5 rounded-full hover:bg-red-600/10 transition-colors"
+                          aria-label={`Remove ${fav.item?.name} from favorites`}
+                          aria-pressed="true"
+                          className="p-1.5 rounded-full hover:bg-[var(--primary-soft)] transition-colors motion-reduce:transition-none"
                         >
                           <Heart
                             size={14}
-                            className="text-red-600 fill-red-600"
+                            className="text-[var(--primary)] fill-[var(--primary)]"
+                            aria-hidden="true"
                           />
                         </button>
                       </div>
                     </div>
-                  </div>
+                  </article>
                 ))}
               </div>
-            </div>
+            </section>
           )}
 
           {storeFavorites.length > 0 && (
-            <div>
-              <h2 className="accent-line text-sm font-semibold text-gray-900 dark:text-gray-50 mb-3">
-                Stores
-              </h2>
-              <div className="space-y-2">
+            <section aria-labelledby="fav-stores-heading">
+              <SectionHeader
+                title={`Stores (${storeFavorites.length})`}
+                id="fav-stores-heading"
+                variant="accent-line"
+              />
+              <ul role="list" className="space-y-2 mt-3">
                 {storeFavorites.map((fav) => (
-                  <div
+                  <li
                     key={`store-${fav.store_id}`}
-                    className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700"
+                    className="flex items-center justify-between p-4 bg-[var(--surface)] rounded-xl border border-[var(--border)]"
                   >
                     <Link
                       href={`/feed/${fav.store_id}`}
@@ -182,15 +200,21 @@ export default function FavoritesPage() {
                           alt={fav.store.name}
                           width={48}
                           height={48}
-                          className="w-12 h-12 rounded-xl object-cover border border-gray-200 dark:border-gray-700"
+                          className="w-12 h-12 rounded-xl object-cover border border-[var(--border)]"
                         />
                       ) : (
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-600/10 to-amber-500/10 flex items-center justify-center">
-                          <Utensils size={20} className="text-gray-400" />
+                        <div
+                          aria-hidden="true"
+                          className="w-12 h-12 rounded-xl bg-gradient-to-br from-[var(--primary-soft)] to-[var(--warning-soft)] flex items-center justify-center"
+                        >
+                          <StoreIcon
+                            size={20}
+                            className="text-[var(--text-subtle)]"
+                          />
                         </div>
                       )}
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-50 truncate">
+                        <p className="text-sm font-semibold text-[var(--text)] truncate">
                           {fav.store?.name}
                         </p>
                         <div className="flex items-center gap-2 mt-0.5">
@@ -198,36 +222,41 @@ export default function FavoritesPage() {
                             <Star
                               size={11}
                               className="fill-amber-500 text-amber-500"
+                              aria-hidden="true"
                             />
-                            <span className="text-[11px] text-gray-500">
+                            <span className="text-[11px] text-[var(--text-muted)]">
                               {fav.store?.rating
                                 ? fav.store.rating.toFixed(1)
                                 : "New"}
                             </span>
                           </div>
-                          <span className="text-[11px] text-gray-500/50">
+                          <span aria-hidden="true" className="text-[var(--text-subtle)]">
                             ·
                           </span>
-                          <span className="flex items-center gap-0.5 text-[11px] text-gray-500">
-                            <MapPin size={10} />
+                          <span className="flex items-center gap-0.5 text-[11px] text-[var(--text-muted)]">
+                            <MapPin size={10} aria-hidden="true" />
                             {fav.store?.pickup_area}
                           </span>
                         </div>
                       </div>
                     </Link>
                     <button
+                      type="button"
                       onClick={() => handleUnfavorite(fav)}
-                      className="p-2 rounded-full hover:bg-red-600/10 transition-colors shrink-0 ml-2"
+                      aria-label={`Remove ${fav.store?.name} from favorites`}
+                      aria-pressed="true"
+                      className="p-2 rounded-full hover:bg-[var(--primary-soft)] transition-colors motion-reduce:transition-none shrink-0 ml-2"
                     >
                       <Heart
                         size={16}
-                        className="text-red-600 fill-red-600"
+                        className="text-[var(--primary)] fill-[var(--primary)]"
+                        aria-hidden="true"
                       />
                     </button>
-                  </div>
+                  </li>
                 ))}
-              </div>
-            </div>
+              </ul>
+            </section>
           )}
         </div>
       )}
