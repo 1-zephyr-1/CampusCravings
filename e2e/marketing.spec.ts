@@ -36,7 +36,7 @@ test.describe("Marketing landing page", () => {
     const authSection = page.locator("#auth");
     await expect(authSection).toBeVisible();
     await expect(
-      authSection.getByRole("heading", { name: /ready to skip the queue/i })
+      authSection.getByRole("heading", { name: /sign in to your account/i })
     ).toBeVisible();
 
     // Auth card email field is interactive
@@ -52,16 +52,24 @@ test.describe("Marketing landing page", () => {
     await expect(page).toHaveURL(/#auth$/);
   });
 
-  test("footer nav links to /feed and #auth", async ({ page }) => {
+  test("footer Product nav links to /feed and hero Sign in links to #auth", async ({
+    page,
+  }) => {
     await page.goto("/");
-    const footer = page.getByRole("navigation", { name: /footer/i });
-    await expect(footer.getByRole("link", { name: /browse/i })).toHaveAttribute(
-      "href",
-      "/feed"
-    );
-    await expect(footer.getByRole("link", { name: /sign in/i })).toHaveAttribute(
-      "href",
-      "#auth"
-    );
+    // The footer exposes two <nav> regions: "Product" and "Company". The
+    // Product nav carries the primary "Browse feed" entry into the app.
+    const productNav = page.getByRole("navigation", { name: /product/i });
+    await expect(productNav).toBeVisible();
+    await expect(
+      productNav.getByRole("link", { name: /browse feed/i })
+    ).toHaveAttribute("href", "/feed");
+
+    // The "Sign in to your account" anchor lives in the hero (not the
+    // footer) and points at the same #auth section as the hero CTA. Assert
+    // it lands users on the auth section whether they came from the CTA or
+    // the inline sign-in link.
+    await expect(
+      page.getByRole("link", { name: /sign in to your account/i })
+    ).toHaveAttribute("href", "#auth");
   });
 });

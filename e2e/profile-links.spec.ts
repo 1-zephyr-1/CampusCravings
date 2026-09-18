@@ -41,17 +41,26 @@ test.describe("Profile routes auth-gate (anon)", () => {
 });
 
 test.describe("Profile discovery from public surface", () => {
-  test("marketing footer exposes the auth entry point", async ({ page }) => {
+  test("marketing footer Product nav exposes the browse entry point", async ({
+    page,
+  }) => {
     await page.goto("/");
 
-    const footer = page.getByRole("navigation", { name: /footer/i });
-    await expect(footer).toBeVisible();
+    // The footer exposes two <nav> regions: "Product" and "Company". The
+    // Product nav carries the "Browse feed" link — the path a user takes
+    // into the app that eventually leads to /profile once signed in.
+    const productNav = page.getByRole("navigation", { name: /product/i });
+    await expect(productNav).toBeVisible();
+    await expect(
+      productNav.getByRole("link", { name: /browse feed/i })
+    ).toHaveAttribute("href", "/feed");
 
-    // The sign-in CTA is the path a user takes to eventually reach /profile.
-    // Asserting it points at the auth section keeps the marketing nav
-    // honest even if the anchor or copy shifts.
-    const signIn = footer.getByRole("link", { name: /sign in/i });
-    await expect(signIn).toHaveAttribute("href", "#auth");
+    // The sign-in anchor lives in the hero (not the footer) and points at
+    // the #auth section. Asserting it keeps the marketing nav honest even
+    // if the anchor or copy shifts.
+    await expect(
+      page.getByRole("link", { name: /sign in to your account/i })
+    ).toHaveAttribute("href", "#auth");
   });
 
   test("hero CTA scrolls to the auth entry point", async ({ page }) => {
