@@ -3,7 +3,12 @@
 import { ArrowUpDown } from "lucide-react";
 import { clsx } from "clsx";
 
-export type SortKey = "newest" | "price_asc" | "price_desc" | "rating";
+export type SortKey =
+  | "recommended"
+  | "newest"
+  | "price_asc"
+  | "price_desc"
+  | "rating";
 
 interface SortControlProps {
   value: SortKey;
@@ -12,10 +17,11 @@ interface SortControlProps {
 }
 
 const OPTIONS: { value: SortKey; label: string }[] = [
+  { value: "recommended", label: "Recommended" },
   { value: "newest", label: "Newest" },
-  { value: "price_asc", label: "Price ↑" },
-  { value: "price_desc", label: "Price ↓" },
-  { value: "rating", label: "Top rated" },
+  { value: "price_asc", label: "Price: Low to High" },
+  { value: "price_desc", label: "Price: High to Low" },
+  { value: "rating", label: "Top Rated" },
 ];
 
 /**
@@ -28,7 +34,7 @@ export function SortControl({ value, onChange, className }: SortControlProps) {
       className={clsx(
         "relative inline-flex items-center gap-1.5 pl-8 pr-3 py-1.5",
         "rounded-lg border border-[var(--border)] bg-[var(--surface)]",
-        "text-xs font-medium text-[var(--text-muted)] hover:border-[var(--primary)]/40 transition-colors",
+        "text-xs font-medium text-[var(--text-muted)] hover:border-[var(--primary)]/40 transition-colors motion-reduce:transition-none",
         className
       )}
     >

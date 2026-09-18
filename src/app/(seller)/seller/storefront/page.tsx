@@ -352,7 +352,7 @@ export default function SellerStorefrontPage() {
             <>
               <span
                 aria-hidden="true"
-                className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"
+                className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin motion-reduce:animate-none"
               />
               Saving...
             </>

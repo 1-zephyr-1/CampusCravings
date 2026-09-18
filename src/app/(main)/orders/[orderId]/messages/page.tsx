@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { OrderThread } from "@/components/messages/order-thread";
+import { ErrorBoundary } from "@/components/dev/error-boundary";
 
 export const metadata: Metadata = {
   title: "Messages · CampusCravings",
@@ -61,16 +62,18 @@ export default async function OrderMessagesPage({
     : undefined;
 
   return (
-    <OrderThread
-      orderId={order.id}
-      viewerRole="customer"
-      counterpartName={counterpartName}
-      backHref={`/orders/${orderId}`}
-      fallback={
-        fallbackHref
-          ? { label: `Email ${counterpartName} instead`, href: fallbackHref }
-          : undefined
-      }
-    />
+    <ErrorBoundary>
+      <OrderThread
+        orderId={order.id}
+        viewerRole="customer"
+        counterpartName={counterpartName}
+        backHref={`/orders/${orderId}`}
+        fallback={
+          fallbackHref
+            ? { label: `Email ${counterpartName} instead`, href: fallbackHref }
+            : undefined
+        }
+      />
+    </ErrorBoundary>
   );
 }

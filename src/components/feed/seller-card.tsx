@@ -7,13 +7,14 @@ import { Store } from "@/types";
 
 interface SellerCardProps {
   store: Store;
+  priority?: boolean;
 }
 
-export function SellerCard({ store }: SellerCardProps) {
+export function SellerCard({ store, priority = false }: SellerCardProps) {
   return (
     <Link
       href={`/feed/${store.id}`}
-      className="block bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-md transition-shadow"
+      className="block bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-md transition-shadow motion-reduce:transition-none"
     >
       <div className="relative h-32 bg-gradient-to-br from-[var(--primary-soft)] to-[var(--warning-soft)]">
         {store.photo_url ? (
@@ -24,6 +25,7 @@ export function SellerCard({ store }: SellerCardProps) {
             height={300}
             className="w-full h-full object-cover"
             sizes="(max-width: 768px) 50vw, 33vw"
+            priority={priority}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">

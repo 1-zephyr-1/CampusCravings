@@ -1,9 +1,18 @@
 import { clsx } from "clsx";
 import Link from "next/link";
 import type { ComponentType, ReactNode } from "react";
+import {
+  EmptyIllustration,
+  type EmptyIllustrationVariant,
+} from "@/components/ui/empty-illustration";
 
 interface EmptyStateProps {
   icon?: ComponentType<{ size?: number; className?: string }>;
+  /**
+   * Branded SVG illustration. Takes precedence over `icon` when provided.
+   * Uses `currentColor`, so color via `text-[var(--primary)]` on the parent.
+   */
+  illustration?: EmptyIllustrationVariant;
   title?: string;
   message: string;
   ctaLabel?: string;
@@ -18,6 +27,7 @@ interface EmptyStateProps {
  */
 export function EmptyState({
   icon: Icon,
+  illustration,
   message,
   title,
   ctaLabel,
@@ -34,7 +44,12 @@ export function EmptyState({
         className
       )}
     >
-      {Icon ? (
+      {illustration ? (
+        <EmptyIllustration
+          variant={illustration}
+          className="mx-auto mb-5 w-28 h-28 text-[var(--primary)] opacity-90"
+        />
+      ) : Icon ? (
         <div className="mx-auto mb-4 w-14 h-14 rounded-full bg-[var(--primary-soft)] flex items-center justify-center">
           <Icon size={26} className="text-[var(--primary)]" />
         </div>
@@ -53,7 +68,7 @@ export function EmptyState({
           className={clsx(
             "inline-flex items-center gap-2 mt-5 px-5 py-2.5",
             "bg-[var(--primary)] text-white rounded-full text-sm font-semibold",
-            "hover:bg-[var(--primary-hover)] transition-colors"
+            "hover:bg-[var(--primary-hover)] transition-colors motion-reduce:transition-none"
           )}
         >
           {ctaLabel}

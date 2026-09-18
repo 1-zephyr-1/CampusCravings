@@ -221,7 +221,7 @@ export default function EditProfilePage() {
         >
           {saving ? (
             <>
-              <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+              <Loader2 size={16} className="animate-spin motion-reduce:animate-none" aria-hidden="true" />
               Saving…
             </>
           ) : saved ? (

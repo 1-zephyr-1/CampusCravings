@@ -20,7 +20,7 @@ export const metadata: Metadata = {
  */
 export default function SellerPendingPage() {
   return (
-    <div className="max-w-2xl mx-auto px-4 md:px-6 py-12 md:py-20 animate-fade-in">
+    <div className="max-w-2xl mx-auto px-4 md:px-6 py-12 md:py-20 animate-fade-in motion-reduce:animate-none">
       <div className="text-center mb-8">
         <div
           aria-hidden="true"

@@ -126,11 +126,14 @@ export interface Report {
   reporter?: Profile;
 }
 
+export type NotificationType = "order" | "message" | "promotion" | "system";
+
 export interface Notification {
   id: string;
   user_id: string;
   title: string;
   message: string;
+  type: NotificationType;
   is_read: boolean;
   link: string | null;
   created_at: string;

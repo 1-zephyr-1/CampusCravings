@@ -10,9 +10,12 @@ import {
   Users,
   Clock,
   TrendingUp,
+  BarChart3,
 } from "lucide-react";
 import { Order } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
+import { WeeklyBarChart } from "@/components/ui/weekly-bar-chart";
 import { clsx } from "clsx";
 
 interface Stats {
@@ -35,12 +38,47 @@ interface StatCard {
   tone: "primary" | "warning" | "success" | "neutral";
 }
 
+interface WeeklyCounts {
+  thisWeek: number[];
+  lastWeek: number[];
+}
+
+const EMPTY_WEEK: number[] = [0, 0, 0, 0, 0, 0, 0];
+
 const TONE_CLASSES: Record<StatCard["tone"], { text: string; bg: string }> = {
   primary: { text: "text-[var(--primary)]", bg: "bg-[var(--primary-soft)]" },
   warning: { text: "text-[var(--warning)]", bg: "bg-[var(--warning-soft)]" },
   success: { text: "text-[var(--success)]", bg: "bg-[var(--success)]/10" },
   neutral: { text: "text-[var(--text-muted)]", bg: "bg-[var(--background)]" },
 };
+
+/**
+ * Count how many rows were created each day of the given 0-indexed week
+ * (Monday-Sunday). Returns a 7-length array aligned to `DAY_OFFSETS`.
+ */
+function countByDay(
+  rows: { created_at: string }[] | null | undefined,
+  refMonday: Date,
+): number[] {
+  const out = [0, 0, 0, 0, 0, 0, 0];
+  if (!rows) return out;
+  const refMs = refMonday.getTime();
+  for (const row of rows) {
+    const t = new Date(row.created_at).getTime();
+    const diffDays = Math.floor((t - refMs) / (24 * 60 * 60 * 1000));
+    if (diffDays >= 0 && diffDays < 7) out[diffDays] += 1;
+  }
+  return out;
+}
+
+/** Returns Monday 00:00 local time for the week containing `date`. */
+function mondayOf(date: Date): Date {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  const day = (d.getDay() + 6) % 7; // 0=Mon..6=Sun
+  d.setDate(d.getDate() - day);
+  return d;
+}
 
 export default function CreatorDashboardPage() {
   const [stats, setStats] = useState<Stats>({
@@ -52,6 +90,15 @@ export default function CreatorDashboardPage() {
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [popularItems, setPopularItems] = useState<PopularItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [charts, setCharts] = useState<{
+    users: WeeklyCounts;
+    orders: WeeklyCounts;
+    listings: WeeklyCounts;
+  }>({
+    users: { thisWeek: EMPTY_WEEK, lastWeek: EMPTY_WEEK },
+    orders: { thisWeek: EMPTY_WEEK, lastWeek: EMPTY_WEEK },
+    listings: { thisWeek: EMPTY_WEEK, lastWeek: EMPTY_WEEK },
+  });
   const supabase = useSupabase();
 
   useEffect(() => {
@@ -119,6 +166,61 @@ export default function CreatorDashboardPage() {
         order_count: i.count,
       })));
 
+      // Weekly chart data: pull the last 14 days from each table and bucket
+      // by day. 14-day window = this week + last week.
+      const since = new Date();
+      since.setDate(since.getDate() - 14);
+
+      const [{ data: usersRows }, { data: ordersRows }, { data: listingsRows }] =
+        await Promise.all([
+          supabase
+            .from("profiles")
+            .select("created_at")
+            .gte("created_at", since.toISOString()),
+          supabase
+            .from("orders")
+            .select("created_at")
+            .gte("created_at", since.toISOString()),
+          supabase
+            .from("food_items")
+            .select("created_at")
+            .gte("created_at", since.toISOString()),
+        ]);
+
+      const thisMonday = mondayOf(new Date());
+      const lastMonday = new Date(thisMonday);
+      lastMonday.setDate(lastMonday.getDate() - 7);
+
+      setCharts({
+        users: {
+          thisWeek: countByDay(usersRows, thisMonday),
+          lastWeek: countByDay(
+            usersRows?.filter(
+              (r) => new Date(r.created_at) >= lastMonday
+            ),
+            lastMonday,
+          ),
+        },
+        orders: {
+          thisWeek: countByDay(ordersRows, thisMonday),
+          lastWeek: countByDay(
+            ordersRows?.filter(
+              (r) => new Date(r.created_at) >= lastMonday
+            ),
+            lastMonday,
+          ),
+        },
+        listings: {
+          thisWeek: countByDay(listingsRows, thisMonday),
+          lastWeek: countByDay(
+            listingsRows?.filter(
+              (r) => new Date(r.created_at) >= lastMonday
+            ),
+            lastMonday,
+          ),
+        },
+      });
+
       setLoading(false);
     }
 
@@ -131,6 +233,8 @@ export default function CreatorDashboardPage() {
     { label: "Total Items", value: stats.totalItems, icon: UtensilsCrossed, tone: "success" },
     { label: "Total Users", value: stats.totalUsers, icon: Users, tone: "neutral" },
   ];
+
+  const totalUsersThis = charts.users.thisWeek.reduce((s, n) => s + n, 0);
 
   if (loading) {
     return (
@@ -175,6 +279,28 @@ export default function CreatorDashboardPage() {
         })}
       </div>
 
+      {/* Weekly activity charts */}
+      <div className="grid lg:grid-cols-3 gap-6">
+        <ChartCard
+          icon={Users}
+          label="New users this week"
+          total={totalUsersThis}
+          data={charts.users}
+        />
+        <ChartCard
+          icon={ShoppingCart}
+          label="New orders this week"
+          total={charts.orders.thisWeek.reduce((s, n) => s + n, 0)}
+          data={charts.orders}
+        />
+        <ChartCard
+          icon={UtensilsCrossed}
+          label="New listings this week"
+          total={charts.listings.thisWeek.reduce((s, n) => s + n, 0)}
+          data={charts.listings}
+        />
+      </div>
+
       <div className="grid lg:grid-cols-2 gap-6">
         <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl">
           <div className="p-5 pb-3 flex items-center gap-2">
@@ -185,9 +311,11 @@ export default function CreatorDashboardPage() {
           </div>
           <div className="px-5 pb-5 space-y-1">
             {recentOrders.length === 0 ? (
-              <p className="text-sm text-[var(--text-muted)] py-4 text-center">
-                No recent orders
-              </p>
+              <EmptyState
+                icon={Clock}
+                message="No recent orders to show yet."
+                className="rounded-none border-0 py-8"
+              />
             ) : (
               recentOrders.map((order) => (
                 <div
@@ -220,9 +348,11 @@ export default function CreatorDashboardPage() {
           </div>
           <div className="px-5 pb-5 space-y-1">
             {popularItems.length === 0 ? (
-              <p className="text-sm text-[var(--text-muted)] py-4 text-center">
-                No data yet
-              </p>
+              <EmptyState
+                icon={TrendingUp}
+                message="Popular items appear once orders are placed."
+                className="rounded-none border-0 py-8"
+              />
             ) : (
               popularItems.map((item, i) => (
                 <div
@@ -246,6 +376,51 @@ export default function CreatorDashboardPage() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+interface ChartCardProps {
+  icon: typeof BarChart3;
+  label: string;
+  total: number;
+  data: WeeklyCounts;
+}
+
+function ChartCard({ icon: Icon, label, total, data }: ChartCardProps) {
+  const hasData =
+    total > 0 ||
+    data.lastWeek.reduce((s, n) => s + n, 0) > 0;
+
+  return (
+    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Icon size={16} className="text-[var(--text-muted)]" aria-hidden="true" />
+          <h2 className="text-sm font-medium text-[var(--text-muted)]">
+            {label}
+          </h2>
+        </div>
+        <span className="text-2xl font-bold text-[var(--text)] font-mono">
+          {total.toLocaleString()}
+        </span>
+      </div>
+      {hasData ? (
+        <WeeklyBarChart
+          thisWeek={data.thisWeek}
+          lastWeek={data.lastWeek}
+          label={`${label}: ${total} this week vs ${data.lastWeek.reduce(
+            (s, n) => s + n,
+            0,
+          )} last week.`}
+        />
+      ) : (
+        <EmptyState
+          icon={BarChart3}
+          message="No data for this week yet."
+          className="border-0 py-8"
+        />
+      )}
     </div>
   );
 }

@@ -11,6 +11,22 @@ export const metadata: Metadata = {
     title: "Feed · CampusCravings",
     description: "Browse today's homemade meals from BRAC University students.",
     type: "website",
+    url: "/feed",
+    siteName: "CampusCravings",
+    images: [
+      {
+        url: "/og-default.png",
+        width: 1200,
+        height: 630,
+        alt: "CampusCravings feed — today's homemade meals",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Feed · CampusCravings",
+    description: "Browse today's homemade meals from BRAC University students.",
+    images: ["/og-default.png"],
   },
   robots: { index: true, follow: true },
 };

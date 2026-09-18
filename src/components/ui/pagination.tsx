@@ -29,7 +29,7 @@ export function Pagination({ page, totalPages, onPageChange }: PaginationProps) 
       <button
         onClick={() => onPageChange(page - 1)}
         disabled={page === 1}
-        className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors motion-reduce:transition-none"
         aria-label="Previous page"
       >
         <ChevronLeft size={16} />
@@ -43,7 +43,7 @@ export function Pagination({ page, totalPages, onPageChange }: PaginationProps) 
           <button
             key={p}
             onClick={() => onPageChange(p)}
-            className={`min-w-[32px] h-8 rounded-lg text-sm font-medium transition-colors ${
+            className={`min-w-[32px] h-8 rounded-lg text-sm font-medium transition-colors motion-reduce:transition-none ${
               page === p
                 ? "bg-red-600 text-white"
                 : "text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
@@ -57,7 +57,7 @@ export function Pagination({ page, totalPages, onPageChange }: PaginationProps) 
       <button
         onClick={() => onPageChange(page + 1)}
         disabled={page === totalPages}
-        className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors motion-reduce:transition-none"
         aria-label="Next page"
       >
         <ChevronRight size={16} />

@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSupabase } from "@/lib/supabase/use-client";
 import { useAuth } from "@/components/ui/auth-provider";
 import { useCart } from "@/components/cart/cart-provider";
 import { QuantityStepper } from "@/components/ui/quantity-stepper";
-import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
-import { FoodItem, Store } from "@/types";
+import { SectionHeader } from "@/components/ui/section-header";
+import { ItemCard } from "@/components/feed/item-card";
+import { recordRecent } from "@/lib/recently-viewed";
+import { FoodItem, Store, Review } from "@/types";
 import {
   Star,
   ChevronLeft,
@@ -20,11 +22,18 @@ import {
   Utensils,
   Flame,
   ShoppingBag,
+  X,
+  MessageSquareQuote,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { clsx } from "clsx";
 import { toast } from "@/components/ui/toast";
+
+interface ItemReview
+  extends Omit<Review, "user"> {
+  user?: { full_name: string; avatar_url: string | null };
+}
 
 /**
  * Client island for the item-detail page.
@@ -36,9 +45,13 @@ import { toast } from "@/components/ui/toast";
 export default function ItemDetailClient({
   initialItem,
   initialStore,
+  initialRelatedItems,
+  initialReviews,
 }: {
   initialItem: FoodItem | null;
   initialStore: Store | null;
+  initialRelatedItems?: FoodItem[];
+  initialReviews?: unknown[];
 }) {
   const { sellerId, itemId } = useParams();
   const { user } = useAuth();
@@ -56,6 +69,19 @@ export default function ItemDetailClient({
   const [currentPhoto, setCurrentPhoto] = useState(0);
   const [reportReason, setReportReason] = useState("");
   const [showReportModal, setShowReportModal] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
+
+  // Related items & reviews are seeded from the server so the page renders
+  // fully on first paint. The state still allows future client refreshes.
+  const [relatedItems] = useState<FoodItem[]>(initialRelatedItems ?? []);
+  const [reviews] = useState<ItemReview[]>(
+    (initialReviews as ItemReview[] | undefined) ?? []
+  );
+
+  const galleryRef = useRef<HTMLDivElement | null>(null);
+
+  const photos = item?.photo_urls?.length ? item.photo_urls : [];
+  const hasMultiplePhotos = photos.length > 1;
 
   useEffect(() => {
     // Re-fetch favorites once the user is known (cookie may be missing on SSR).
@@ -74,6 +100,45 @@ export default function ItemDetailClient({
       cancelled = true;
     };
   }, [itemId, user, item, supabase]);
+
+  // Record this visit in the "Recently viewed" carousel on the feed.
+  // Runs even for signed-out visitors (localStorage only) and is guarded
+  // by `typeof window` inside `recordRecent`.
+  useEffect(() => {
+    if (!item || !store) return;
+    recordRecent({
+      id: item.id,
+      name: item.name,
+      photo_url: item.photo_urls?.[0] ?? null,
+      store_id: store.id,
+      store_name: store.name,
+    });
+  }, [item, store]);
+
+  // Keyboard navigation for the gallery (only when gallery or fullscreen is focused).
+  useEffect(() => {
+    function isGalleryFocused() {
+      if (!galleryRef.current) return false;
+      return galleryRef.current.contains(document.activeElement);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (fullscreen) {
+        if (e.key === "Escape") {
+          setFullscreen(false);
+          return;
+        }
+      }
+      if (!hasMultiplePhotos) return;
+      if (!isGalleryFocused() && !fullscreen) return;
+      if (e.key === "ArrowLeft") {
+        setCurrentPhoto((i) => (i - 1 + photos.length) % photos.length);
+      } else if (e.key === "ArrowRight") {
+        setCurrentPhoto((i) => (i + 1) % photos.length);
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [hasMultiplePhotos, photos.length, fullscreen]);
 
   async function handlePreOrder() {
     if (!user || !item || !store) return;
@@ -156,6 +221,7 @@ export default function ItemDetailClient({
       notes: notes || "",
       photo_url: item.photo_urls?.[0] ?? null,
     });
+    toast(`Added ${quantity}× ${item.name} to cart`, "success");
   }
 
   async function toggleFavorite() {
@@ -182,11 +248,6 @@ export default function ItemDetailClient({
       setIsFavorited(wasFavorited);
       toast("Failed to update favorite", "error");
     }
-  }
-
-  async function handleReport() {
-    if (!user || !item) return;
-    setShowReportModal(true);
   }
 
   async function submitReport() {
@@ -216,10 +277,12 @@ export default function ItemDetailClient({
     );
   }
 
-  const photos = item.photo_urls?.length ? item.photo_urls : [];
+  const canPreOrder =
+    !item.is_sold_out && user && user.id !== store.user_id;
+  const showStickyCart = canPreOrder && store.is_open !== false;
 
   return (
-    <div className="max-w-3xl mx-auto px-4 md:px-6 py-4">
+    <div className="max-w-3xl mx-auto px-4 md:px-6 py-4 pb-32 md:pb-8">
       <Link
         href={`/feed/${sellerId}`}
         className="inline-flex items-center gap-1 text-sm text-[var(--text-muted)] hover:text-[var(--text)] mb-4 transition-colors motion-reduce:transition-none"
@@ -229,19 +292,37 @@ export default function ItemDetailClient({
       </Link>
 
       {/* Photo gallery */}
-      <div className="relative rounded-xl overflow-hidden mb-4 bg-gradient-to-br from-[var(--primary-soft)] to-[var(--warning-soft)]">
+      <div
+        ref={galleryRef}
+        tabIndex={hasMultiplePhotos ? 0 : -1}
+        role={hasMultiplePhotos ? "region" : undefined}
+        aria-label={
+          hasMultiplePhotos
+            ? "Item photo gallery. Use left and right arrow keys to navigate."
+            : "Item photo"
+        }
+        className="relative rounded-xl overflow-hidden mb-2 bg-gradient-to-br from-[var(--primary-soft)] to-[var(--warning-soft)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/40"
+      >
         {photos.length > 0 ? (
           <>
-            <Image
-              src={photos[currentPhoto]}
-              alt={item.name}
-              width={800}
-              height={320}
-              className="w-full h-64 md:h-80 object-cover"
-              sizes="100vw"
-              priority
-            />
-            {photos.length > 1 && (
+            <button
+              type="button"
+              onClick={() => hasMultiplePhotos && setFullscreen(true)}
+              className="block w-full cursor-zoom-in"
+              aria-label="Open photo fullscreen"
+            >
+              <Image
+                key={photos[currentPhoto]}
+                src={photos[currentPhoto]}
+                alt={`${item.name} — photo ${currentPhoto + 1} of ${photos.length}`}
+                width={800}
+                height={320}
+                className="w-full h-64 md:h-80 object-cover"
+                sizes="100vw"
+                priority
+              />
+            </button>
+            {hasMultiplePhotos && (
               <>
                 <button
                   type="button"
@@ -290,13 +371,117 @@ export default function ItemDetailClient({
         )}
 
         {item.is_sold_out && (
-          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 flex items-center justify-center pointer-events-none">
             <span className="stamp-sold-out text-lg bg-white/95 px-4 py-2">
               Sold Out
             </span>
           </div>
         )}
       </div>
+
+      {/* Thumbnails */}
+      {hasMultiplePhotos && (
+        <div
+          className="flex gap-2 mb-4 overflow-x-auto"
+          role="tablist"
+          aria-label="Photo thumbnails"
+        >
+          {photos.map((src, i) => (
+            <button
+              key={i}
+              type="button"
+              role="tab"
+              aria-selected={i === currentPhoto}
+              aria-label={`Show photo ${i + 1} of ${photos.length}`}
+              onClick={() => setCurrentPhoto(i)}
+              className={clsx(
+                "shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-colors motion-reduce:transition-none",
+                i === currentPhoto
+                  ? "border-[var(--primary)]"
+                  : "border-transparent opacity-70 hover:opacity-100"
+              )}
+            >
+              <Image
+                src={src}
+                alt=""
+                width={64}
+                height={64}
+                className="w-full h-full object-cover"
+                sizes="64px"
+              />
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Fullscreen viewer */}
+      {fullscreen && photos.length > 0 && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Photo viewer"
+          className="fixed inset-0 z-[120] bg-black flex items-center justify-center"
+          onClick={() => setFullscreen(false)}
+        >
+          <button
+            type="button"
+            aria-label="Close photo viewer"
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-colors motion-reduce:transition-none"
+            onClick={(e) => {
+              e.stopPropagation();
+              setFullscreen(false);
+            }}
+          >
+            <X size={22} />
+          </button>
+          {hasMultiplePhotos && (
+            <>
+              <button
+                type="button"
+                aria-label="Previous photo"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCurrentPhoto((i) => (i - 1 + photos.length) % photos.length);
+                }}
+                className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-colors motion-reduce:transition-none"
+              >
+                <ChevronLeft size={26} />
+              </button>
+              <button
+                type="button"
+                aria-label="Next photo"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCurrentPhoto((i) => (i + 1) % photos.length);
+                }}
+                className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-colors motion-reduce:transition-none"
+              >
+                <ChevronRight size={26} />
+              </button>
+            </>
+          )}
+          <div
+            className="relative w-full h-full max-w-4xl max-h-[85vh] mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Image
+              key={photos[currentPhoto]}
+              src={photos[currentPhoto]}
+              alt={`${item.name} — photo ${currentPhoto + 1} of ${photos.length}`}
+              width={1200}
+              height={800}
+              className="w-full h-full object-contain"
+              sizes="100vw"
+              priority
+            />
+          </div>
+          {hasMultiplePhotos && (
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-white text-xs bg-black/50 px-3 py-1 rounded-full">
+              {currentPhoto + 1} / {photos.length}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Item info */}
       <div className="flex items-start justify-between gap-3 mb-4">
@@ -385,7 +570,7 @@ export default function ItemDetailClient({
       </div>
 
       {/* Pre-order form */}
-      {!item.is_sold_out && user && user.id !== store.user_id && (
+      {canPreOrder && (
         <div className="bg-[var(--surface)] rounded-xl border border-[var(--border)] p-4 space-y-3">
           <h3 className="font-semibold text-sm text-[var(--text)]">Pre-order</h3>
 
@@ -417,7 +602,7 @@ export default function ItemDetailClient({
               value={pickupTime}
               onChange={(e) => setPickupTime(e.target.value)}
               placeholder="e.g. 6 PM today"
-              className="flex-1 px-3 py-1.5 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-sm text-[var(--text)] placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)] transition-colors"
+              className="flex-1 px-3 py-1.5 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-sm text-[var(--text)] placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)] transition-colors motion-reduce:transition-none"
             />
           </div>
 
@@ -432,12 +617,12 @@ export default function ItemDetailClient({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Special requests (e.g. no onions)"
-              className="w-full px-3 py-1.5 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-sm text-[var(--text)] placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)] transition-colors"
+              className="w-full px-3 py-1.5 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-sm text-[var(--text)] placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)] transition-colors motion-reduce:transition-none"
             />
           </div>
 
-          {/* Total + buttons */}
-          <div className="flex items-center justify-between pt-2">
+          {/* Total + buttons (md+ only; mobile uses sticky bar below) */}
+          <div className="hidden md:flex items-center justify-between pt-2">
             <span className="text-sm text-[var(--text-muted)]">
               Total:{" "}
               <span className="font-bold text-[var(--text)] font-mono">
@@ -445,7 +630,7 @@ export default function ItemDetailClient({
               </span>
             </span>
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="hidden md:grid grid-cols-2 gap-2">
             <button
               type="button"
               onClick={handleAddToCart}
@@ -466,7 +651,7 @@ export default function ItemDetailClient({
           </div>
 
           {store.is_open === false && (
-            <p className="text-xs text-[var(--text-subtle)] mt-1 text-center">
+            <p className="hidden md:block text-xs text-[var(--text-subtle)] mt-1 text-center">
               This store is currently closed
             </p>
           )}
@@ -482,6 +667,114 @@ export default function ItemDetailClient({
             Sign in to pre-order
           </Link>
         </div>
+      )}
+
+      {item.is_sold_out && (
+        <div
+          role="status"
+          className="mt-4 p-3 bg-[var(--warning-soft)] border border-[var(--warning)]/30 rounded-xl text-sm text-[var(--text)]"
+        >
+          This dish is currently sold out. Check back later.
+        </div>
+      )}
+
+      {/* Reviews preview */}
+      {reviews && reviews.length > 0 && (        <section className="mt-8" aria-labelledby="reviews-heading">
+          <SectionHeader
+            id="reviews-heading"
+            title="Recent reviews"
+            variant="accent-line"
+            subtitle={`${reviews.length} ${
+              reviews.length === 1 ? "review" : "reviews"
+            }`}
+          />
+          <ul className="space-y-3">
+            {reviews.map((r) => (
+              <li
+                key={r.id}
+                className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-4"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <div
+                    className="w-8 h-8 rounded-full bg-[var(--primary-soft)] flex items-center justify-center text-[var(--primary)] font-semibold text-sm overflow-hidden shrink-0"
+                    aria-hidden="true"
+                  >
+                    {r.user?.avatar_url ? (
+                      <Image
+                        src={r.user.avatar_url}
+                        alt=""
+                        width={32}
+                        height={32}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      (r.user?.full_name || "?").charAt(0).toUpperCase()
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-[var(--text)] truncate">
+                      {r.user?.full_name || "Customer"}
+                    </p>
+                    <div
+                      className="flex items-center gap-0.5"
+                      aria-label={`Rated ${r.rating} out of 5`}
+                    >
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star
+                          key={i}
+                          size={12}
+                          className={clsx(
+                            i < r.rating
+                              ? "fill-amber-500 text-amber-500"
+                              : "text-[var(--border)]"
+                          )}
+                          aria-hidden="true"
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                {r.comment ? (
+                  <p className="text-sm text-[var(--text-muted)] leading-relaxed">
+                    {r.comment}
+                  </p>
+                ) : (
+                  <p className="text-sm text-[var(--text-subtle)] italic inline-flex items-center gap-1">
+                    <MessageSquareQuote size={12} aria-hidden="true" />
+                    No comment left.
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* Related items */}
+      {relatedItems && relatedItems.length > 0 && (
+        <section className="mt-8" aria-labelledby="related-heading">
+          <SectionHeader
+            id="related-heading"
+            title="More from this store"
+            variant="accent-line"
+            subtitle={`${relatedItems.length} ${
+              relatedItems.length === 1 ? "item" : "items"
+            }`}
+            rightSlot={
+              <Link
+                href={`/feed/${sellerId}`}
+                className="text-xs font-medium text-[var(--primary)] hover:underline"
+              >
+                View store
+              </Link>
+            }
+          />
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {relatedItems.map((it) => (
+              <ItemCard key={it.id} item={it} />
+            ))}
+          </div>
+        </section>
       )}
 
       {showReportModal && (
@@ -539,6 +832,49 @@ export default function ItemDetailClient({
                 className="px-4 py-2 text-sm font-medium text-white bg-[var(--primary)] hover:bg-[var(--primary-hover)] rounded-lg transition-colors motion-reduce:transition-none disabled:opacity-50"
               >
                 Submit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sticky Add to cart bar (mobile only) */}
+      {showStickyCart && (
+        <div
+          className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-[var(--border)] bg-[var(--surface)]/95 backdrop-blur supports-[backdrop-filter]:bg-[var(--surface)]/80 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-4px_12px_rgba(0,0,0,0.06)]"
+          role="region"
+          aria-label="Quick add to cart"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="font-mono font-bold text-[var(--text)] tabular-nums">
+                ৳{(item.price * quantity).toFixed(0)}
+              </span>
+              <QuantityStepper
+                value={quantity}
+                onChange={setQuantity}
+                max={Math.max(1, item.quantity)}
+                label={`${item.name} quantity`}
+                size="sm"
+              />
+            </div>
+            <div className="flex items-center gap-2 ml-auto">
+              <button
+                type="button"
+                onClick={handleAddToCart}
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-[var(--surface-elev)] text-[var(--text)] border border-[var(--border)] rounded-xl text-sm font-semibold hover:border-[var(--primary)] hover:text-[var(--primary)] transition-colors motion-reduce:transition-none"
+                aria-label="Add to cart"
+              >
+                <ShoppingBag size={14} aria-hidden="true" />
+                Cart
+              </button>
+              <button
+                type="button"
+                onClick={handlePreOrder}
+                disabled={adding}
+                className="inline-flex items-center justify-center px-4 py-2 bg-[var(--primary)] text-white rounded-xl text-sm font-semibold hover:bg-[var(--primary-hover)] transition-colors motion-reduce:transition-none disabled:opacity-50"
+              >
+                {adding ? "..." : "Buy now"}
               </button>
             </div>
           </div>

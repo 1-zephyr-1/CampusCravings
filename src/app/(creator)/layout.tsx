@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AuthProvider } from "@/components/ui/auth-provider";
 import { CreatorSidebar } from "@/components/layout/creator-sidebar";
-import { TopBar } from "@/components/layout/top-bar";
+import { CreatorTopBar } from "@/components/layout/creator-top-bar";
 
 export default async function CreatorLayout({
   children,
@@ -37,8 +37,14 @@ export default async function CreatorLayout({
       <div className="flex min-h-screen">
         <CreatorSidebar />
         <div className="flex-1 flex flex-col min-w-0">
-          <TopBar />
-          <main id="main-content" className="flex-1 p-4 md:p-6 pb-20 md:pb-6">{children}</main>
+          <CreatorTopBar />
+          <main
+            id="main-content"
+            tabIndex={-1}
+            className="flex-1 p-4 md:p-6 pb-20 md:pb-6"
+          >
+            {children}
+          </main>
         </div>
       </div>
     </AuthProvider>

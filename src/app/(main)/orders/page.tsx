@@ -10,6 +10,7 @@ import Link from "next/link";
 import { clsx } from "clsx";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
 import { ChevronRight, Clock, Package } from "lucide-react";
 
 export default function OrdersPage() {
@@ -17,19 +18,29 @@ export default function OrdersPage() {
   const supabase = useSupabase();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [refetchToken, setRefetchToken] = useState(0);
   const [tab, setTab] = useState<"active" | "completed">("active");
 
   useEffect(() => {
     if (!user) return;
 
     async function fetchOrders() {
-      const { data } = await supabase
+      const { data, error: fetchError } = await supabase
         .from("orders")
         .select("*, store:stores!orders_store_id_fkey(name, pickup_area), items:order_items(*, item:food_items(name, photo_urls))")
         .eq("customer_id", user!.id)
         .order("created_at", { ascending: false });
 
-      setOrders(data || []);
+      if (fetchError) {
+        setError(
+          fetchError.message ||
+            "We couldn't load your orders. Please try again in a moment."
+        );
+      } else {
+        setError(null);
+        setOrders(data || []);
+      }
       setLoading(false);
     }
 
@@ -58,7 +69,7 @@ export default function OrdersPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, supabase]);
+  }, [user, supabase, refetchToken]);
 
   const activeOrders = orders.filter((o) =>
     ["requested", "accepted", "ready"].includes(o.status)
@@ -114,9 +125,40 @@ export default function OrdersPage() {
       {loading ? (
         <div className="space-y-3" aria-label="Loading orders" role="status">
           {[...Array(3)].map((_, i) => (
-            <Skeleton key={i} className="h-24 rounded-xl" />
+            <div
+              key={i}
+              className="p-4 bg-[var(--surface)] rounded-xl border border-[var(--border)]"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 space-y-2">
+                  {/* status pill */}
+                  <Skeleton className="h-4 w-16" shape="pill" />
+                  {/* store name (line 1) */}
+                  <Skeleton className="h-4 w-2/3" />
+                  {/* meta line (items · pickup) */}
+                  <Skeleton className="h-3 w-1/2" />
+                  {/* timestamp */}
+                  <Skeleton className="h-3 w-1/3" />
+                </div>
+                {/* price + chevron */}
+                <div className="text-right space-y-2 shrink-0">
+                  <Skeleton className="h-4 w-12 ml-auto" />
+                  <Skeleton className="h-4 w-4 ml-auto" shape="circle" />
+                </div>
+              </div>
+            </div>
           ))}
         </div>
+      ) : error ? (
+        <ErrorState
+          error={error}
+          title="Couldn't load your orders"
+          onRetry={() => {
+            setError(null);
+            setLoading(true);
+            setRefetchToken((t) => t + 1);
+          }}
+        />
       ) : displayOrders.length > 0 ? (
         <div className="space-y-3">
           {displayOrders.map((order) => (

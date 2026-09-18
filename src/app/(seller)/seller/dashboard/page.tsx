@@ -12,6 +12,7 @@ import { clsx } from "clsx";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SectionHeader } from "@/components/ui/section-header";
+import { StoreSetupChecklist } from "@/components/seller/store-setup-checklist";
 import {
   ShoppingBag,
   DollarSign,
@@ -19,6 +20,7 @@ import {
   Clock,
   Plus,
   Package,
+  BarChart3,
   Store as StoreIcon,
   type LucideIcon,
 } from "lucide-react";
@@ -174,16 +176,30 @@ export default function SellerDashboardPage() {
           <h1 className="text-xl font-bold text-[var(--text)]">Dashboard</h1>
           <p className="text-sm text-[var(--text-muted)]">{store.name}</p>
         </div>
-        <span
-          className={clsx(
-            "px-3 py-1 rounded-full text-xs font-semibold",
-            store.is_open
-              ? "bg-[var(--success)]/15 text-[var(--success)]"
-              : "bg-[var(--background)] text-[var(--text-muted)]"
-          )}
-        >
-          {store.is_open ? "Open" : "Closed"}
-        </span>
+        <div className="flex items-center gap-2">
+          <span
+            className={clsx(
+              "px-3 py-1 rounded-full text-xs font-semibold",
+              store.is_open
+                ? "bg-[var(--success)]/15 text-[var(--success)]"
+                : "bg-[var(--background)] text-[var(--text-muted)]"
+            )}
+          >
+            {store.is_open ? "Open" : "Closed"}
+          </span>
+          <Link
+            href="/seller/analytics"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border border-[var(--border)] text-[var(--text-muted)] hover:border-[var(--primary)]/40 hover:text-[var(--primary)] transition-colors motion-reduce:transition-none"
+            aria-label="View analytics"
+          >
+            <BarChart3 size={12} aria-hidden="true" />
+            Analytics
+          </Link>
+        </div>
+      </div>
+
+      <div className="mb-6">
+        <StoreSetupChecklist />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
@@ -255,6 +271,20 @@ export default function SellerDashboardPage() {
                 </p>
                 <p className="text-xs text-[var(--text-muted)]">
                   Update your store profile
+                </p>
+              </div>
+            </Link>
+            <Link
+              href="/seller/analytics"
+              className="flex items-center gap-3 p-3 rounded-xl hover:bg-[var(--background)] transition-colors motion-reduce:transition-none"
+            >
+              <div className="p-2 rounded-lg bg-[var(--primary-soft)]">
+                <BarChart3 size={16} className="text-[var(--primary)]" aria-hidden="true" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-[var(--text)]">Analytics</p>
+                <p className="text-xs text-[var(--text-muted)]">
+                  See sales and revenue trends
                 </p>
               </div>
             </Link>

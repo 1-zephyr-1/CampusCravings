@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Clock, ChevronDown, X } from "lucide-react";
 import { clsx } from "clsx";
 
@@ -11,6 +11,14 @@ interface PickupTimePickerProps {
   minMinutes?: number;
   /** Maximum days from now (default 7). */
   maxDays?: number;
+  /**
+   * Optional default minutes-from-now when the user has not picked a time yet.
+   * If `value` is empty on mount, the picker auto-fills with `defaultMinutes`
+   * (rounded up to the nearest 15 min) and notifies the parent via `onChange`.
+   */
+  defaultMinutes?: number;
+  /** Snap the default to the nearest N minutes (default 15). */
+  snapMinutes?: number;
   /** Optional className for the wrapper. */
   className?: string;
   /** Optional id for the input. */
@@ -36,6 +44,8 @@ export function PickupTimePicker({
   onChange,
   minMinutes = 30,
   maxDays = 7,
+  defaultMinutes,
+  snapMinutes = 15,
   className,
   id = "pickup-time",
   label = "Pickup time",
@@ -62,6 +72,25 @@ export function PickupTimePicker({
   }, [maxDays]);
 
   const [open, setOpen] = useState(false);
+
+  // If no value is provided and a default is requested, seed it once on mount
+  // (rounded up to the nearest `snapMinutes`). This avoids the user landing
+  // on a cart with no pickup time at all.
+  useEffect(() => {
+    if (value || !defaultMinutes) return;
+    const d = new Date();
+    d.setMinutes(d.getMinutes() + defaultMinutes);
+    if (snapMinutes > 1) {
+      const ms = d.getTime();
+      const snapped = Math.ceil(ms / (snapMinutes * 60 * 1000)) * (snapMinutes * 60 * 1000);
+      d.setTime(snapped);
+    }
+    if (d.getTime() < minDate.getTime()) d.setTime(minDate.getTime());
+    if (d.getTime() > maxDate.getTime()) d.setTime(maxDate.getTime());
+    onChange(d.toISOString());
+    // Intentionally only run on mount: we don't want to overwrite user picks.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function applyPreset(preset: "now" | "in1h" | "tonight7" | "tomorrowLunch") {
     const d = new Date();
@@ -172,7 +201,7 @@ export function PickupTimePicker({
           id={`${id}-panel`}
           role="dialog"
           aria-label={`${label} picker`}
-          className="absolute z-30 mt-1 w-full bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-lg p-3 space-y-3 animate-fade-in"
+          className="absolute z-30 mt-1 w-full bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-lg p-3 space-y-3 animate-fade-in motion-reduce:animate-none"
         >
           {/* Quick presets */}
           <div>

@@ -11,9 +11,12 @@ import { toast } from "@/components/ui/toast";
 
 interface ItemCardProps {
   item: FoodItem;
+  priority?: boolean;
+  /** When true, render the "Matches your diet" badge (assumes dietary prefs already match). */
+  matchesDiet?: boolean;
 }
 
-export function ItemCard({ item }: ItemCardProps) {
+export function ItemCard({ item, priority = false, matchesDiet = false }: ItemCardProps) {
   const [isFavorited, setIsFavorited] = useState(false);
   const [pending, setPending] = useState(false);
   const { user } = useAuth();
@@ -53,7 +56,7 @@ export function ItemCard({ item }: ItemCardProps) {
   return (
     <Link
       href={`/feed/${item.store_id}/${item.id}`}
-      className="group block bg-[var(--surface)] rounded-xl border border-[var(--border)] overflow-hidden hover:shadow-md hover:border-[var(--primary)]/30 transition-all motion-reduce:transition-none"
+      className="group block bg-[var(--surface)] rounded-xl border border-[var(--border)] overflow-hidden hover:shadow-md hover:border-[var(--primary)]/30 focus-visible:shadow-md focus-visible:border-[var(--primary)]/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/30 transition-all motion-reduce:transition-none"
     >
       <div className="relative h-36 bg-gradient-to-br from-[var(--primary-soft)] to-[var(--warning-soft)]">
         {item.photo_urls?.[0] ? (
@@ -64,6 +67,7 @@ export function ItemCard({ item }: ItemCardProps) {
             height={300}
             className="w-full h-full object-cover motion-reduce:transition-none group-hover:scale-105 transition-transform duration-300"
             sizes="(max-width: 768px) 50vw, 33vw"
+            priority={priority}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
@@ -106,6 +110,18 @@ export function ItemCard({ item }: ItemCardProps) {
                 {tag}
               </span>
             ))}
+          </div>
+        )}
+
+        {matchesDiet && (
+          <div
+            className="absolute top-2 left-2"
+            aria-label="Matches your dietary preferences"
+          >
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-[var(--primary)]/95 text-white text-[10px] font-medium shadow-sm">
+              <Heart size={10} aria-hidden="true" className="fill-white" />
+              Matches your diet
+            </span>
           </div>
         )}
       </div>

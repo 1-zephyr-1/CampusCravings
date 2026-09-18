@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
-import { storeJsonLd, jsonLdScript } from "@/lib/seo";
+import { storeJsonLd } from "@/lib/seo/structured-data";
 import type { Store, FoodItem } from "@/types";
 import SellerStoreClient from "./store-page-client";
 
@@ -18,7 +18,7 @@ export async function generateMetadata({
   const supabase = await createClient();
   const { data: store } = await supabase
     .from("stores")
-    .select("name, description, pickup_area")
+    .select("name, description, pickup_area, photo_url")
     .eq("id", sellerId)
     .maybeSingle();
 
@@ -30,11 +30,42 @@ export async function generateMetadata({
   const description =
     store.description?.slice(0, 160) ||
     `Browse and pre-order homemade food from ${store.name} on CampusCravings. Pickup at ${store.pickup_area}.`;
+  const url = `/feed/${sellerId}`;
+  const ogImages = store.photo_url
+    ? [
+        {
+          url: store.photo_url,
+          width: 800,
+          height: 256,
+          alt: `${store.name} cover photo`,
+        },
+      ]
+    : [
+        {
+          url: "/og-default.png",
+          width: 1200,
+          height: 630,
+          alt: `${store.name} on CampusCravings`,
+        },
+      ];
   return {
     title,
     description,
-    openGraph: { title, description, type: "profile" },
-    twitter: { card: "summary", title, description },
+    alternates: { canonical: url },
+    openGraph: {
+      title,
+      description,
+      type: "profile",
+      url,
+      siteName: "CampusCravings",
+      images: ogImages,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: ogImages.map((i) => i.url),
+    },
   };
 }
 
@@ -65,27 +96,20 @@ export default async function SellerStorePage({
   const items = ((itemsRes.data as FoodItem[] | null) || []).filter(
     (it) => it.store?.is_approved && it.store?.is_open
   );
-
-  const baseUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+  const initialError =
+    storeRes.error?.message || itemsRes.error?.message || null;
 
   const jsonLd = store
     ? storeJsonLd({
+        id: store.id,
         name: store.name,
         description:
           store.description ||
           `Homemade food by a BRAC University student. Pickup near ${store.pickup_area}.`,
-        image: store.photo_url,
-        url: `${baseUrl}/feed/${store.id}`,
-        ratingValue:
-          store.rating && store.rating > 0 ? store.rating : undefined,
-        reviewCount:
-          store.total_ratings && store.total_ratings > 0
-            ? store.total_ratings
-            : undefined,
-        pickupArea: store.pickup_area,
-        priceRange: "৳",
+        photo_url: store.photo_url,
+        rating: store.rating ?? 0,
+        total_ratings: store.total_ratings ?? 0,
+        pickup_area: store.pickup_area,
       })
     : null;
 
@@ -94,10 +118,14 @@ export default async function SellerStorePage({
       {jsonLd && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={jsonLdScript(jsonLd)}
+          dangerouslySetInnerHTML={{ __html: jsonLd }}
         />
       )}
-      <SellerStoreClient initialStore={store} initialItems={items} />
+      <SellerStoreClient
+        initialStore={store}
+        initialItems={items}
+        initialError={initialError}
+      />
     </>
   );
 }

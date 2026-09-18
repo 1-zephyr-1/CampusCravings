@@ -3,6 +3,7 @@ import { CartProvider } from "@/components/cart/cart-provider";
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/top-bar";
 import { BottomNav } from "@/components/layout/bottom-nav";
+import { KeyboardShortcuts } from "@/components/layout/keyboard-shortcuts";
 
 export default function MainLayout({
   children,
@@ -26,6 +27,7 @@ export default function MainLayout({
           </div>
           <BottomNav />
         </div>
+        <KeyboardShortcuts />
       </CartProvider>
     </AuthProvider>
   );

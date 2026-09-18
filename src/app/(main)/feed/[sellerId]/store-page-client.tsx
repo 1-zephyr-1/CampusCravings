@@ -1,25 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { useSupabase } from "@/lib/supabase/use-client";
 import { useAuth } from "@/components/ui/auth-provider";
 import { ItemCard } from "@/components/feed/item-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SectionHeader } from "@/components/ui/section-header";
+import { ErrorState } from "@/components/ui/error-state";
 import { Store, FoodItem } from "@/types";
+import { DIETARY_TAGS } from "@/lib/constants";
 import {
   Star,
   MapPin,
   Flag,
   ChevronLeft,
+  ChevronDown,
   Frown,
   Inbox,
+  Info,
   Utensils,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { toast } from "@/components/ui/toast";
+import { ShareButton } from "@/components/ui/share-button";
+import { FilterChip } from "@/components/ui/filter-chip";
 
 /**
  * Client island for the seller-store page.
@@ -29,18 +35,80 @@ import { toast } from "@/components/ui/toast";
 export default function SellerStoreClient({
   initialStore,
   initialItems,
+  initialError,
 }: {
   initialStore: Store | null;
   initialItems: FoodItem[];
+  initialError?: string | null;
 }) {
   const { sellerId } = useParams();
   const { user } = useAuth();
   const supabase = useSupabase();
   const [store] = useState<Store | null>(initialStore);
   const [items] = useState<FoodItem[]>(initialItems);
+  const [error, setError] = useState<string | null>(initialError ?? null);
   const [reporting, setReporting] = useState(false);
   const [reportReason, setReportReason] = useState("");
   const [showReportModal, setShowReportModal] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
+
+  // Dietary filter chips — persisted in localStorage, keyed to the store id
+  // so a customer's "Vegetarian only" choice in one shop doesn't bleed
+  // into another shop's menu.
+  const dietaryStorageKey = `cc:diet:${sellerId ?? "unknown"}`;
+  const [activeDiets, setActiveDiets] = useState<string[]>([]);
+  const [dietaryHydrated, setDietaryHydrated] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(dietaryStorageKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          setActiveDiets(
+            parsed.filter((v): v is string => typeof v === "string")
+          );
+        }
+      }
+    } catch {
+      // Ignore localStorage failures (Safari private mode etc.).
+    }
+    setDietaryHydrated(true);
+  }, [dietaryStorageKey]);
+
+  useEffect(() => {
+    if (!dietaryHydrated) return;
+    try {
+      window.localStorage.setItem(
+        dietaryStorageKey,
+        JSON.stringify(activeDiets)
+      );
+    } catch {
+      // Ignore quota / disabled storage.
+    }
+  }, [dietaryStorageKey, activeDiets, dietaryHydrated]);
+
+  // Only render chips for tags that at least one menu item satisfies.
+  const availableDiets = useMemo(() => {
+    const present = new Set<string>();
+    items.forEach((it) =>
+      (it.dietary_tags || []).forEach((t) => present.add(t))
+    );
+    return DIETARY_TAGS.filter((t) => present.has(t));
+  }, [items]);
+
+  const filteredItems = useMemo(() => {
+    if (activeDiets.length === 0) return items;
+    return items.filter((it) =>
+      activeDiets.every((tag) => (it.dietary_tags || []).includes(tag))
+    );
+  }, [items, activeDiets]);
+
+  function toggleDiet(tag: string) {
+    setActiveDiets((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    );
+  }
 
   function openReport() {
     if (!user) {
@@ -84,9 +152,14 @@ export default function SellerStoreClient({
   }
 
   const isOpen = store.is_open;
+  const hasAbout =
+    Boolean(store.description) ||
+    Boolean(store.pickup_area) ||
+    Boolean(store.food_type) ||
+    Boolean(store.profile?.full_name);
 
   return (
-    <div className="max-w-5xl mx-auto px-4 md:px-6 py-4 animate-fade-in">
+    <div className="max-w-5xl mx-auto px-4 md:px-6 py-4 animate-fade-in motion-reduce:animate-none">
       <Link
         href="/feed"
         className="inline-flex items-center gap-1 text-sm text-[var(--text-muted)] hover:text-[var(--text)] mb-4 transition-colors motion-reduce:transition-none"
@@ -164,39 +237,175 @@ export default function SellerStoreClient({
             >
               {isOpen ? "Open" : "Closed"}
             </span>
+            {store.food_type && (
+              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-white/15 text-white/90 backdrop-blur-sm">
+                {store.food_type}
+              </span>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Store info */}
-      <div className="flex items-start justify-between gap-3 mb-6">
-        <div>
-          <p className="flex items-center gap-1.5 text-sm text-[var(--text-muted)]">
-            <MapPin size={14} aria-hidden="true" />
-            {store.pickup_area}
-          </p>
-          {store.description && (
-            <p className="text-sm text-[var(--text-muted)] mt-1 max-w-lg leading-relaxed">
-              {store.description}
-            </p>
-          )}
-          <p className="text-xs text-[var(--text-subtle)] mt-1">
-            Run by {store.profile?.full_name || "a fellow student"}
-          </p>
-        </div>
+      {/* Action row (share + report) */}
+      <div className="flex items-center justify-end gap-2 mb-4">
         {user && user.id !== store.user_id && (
-          <button
-            type="button"
-            onClick={openReport}
-            disabled={reporting}
-            aria-label="Report this seller"
-            className="flex items-center gap-1 px-3 py-1.5 text-xs text-[var(--text-muted)] border border-[var(--border)] rounded-lg hover:border-[var(--primary)]/30 hover:text-[var(--primary)] transition-colors motion-reduce:transition-none"
-          >
-            <Flag size={12} aria-hidden="true" />
-            Report
-          </button>
+          <>
+            <ShareButton
+              title={`${store.name} on CampusCravings`}
+              text={`Check out ${store.name} on CampusCravings — homemade food, pickup at ${store.pickup_area}.`}
+              path={`/feed/${sellerId}`}
+            />
+            <button
+              type="button"
+              onClick={openReport}
+              disabled={reporting}
+              aria-label="Report this seller"
+              className="flex items-center gap-1 px-3 py-1.5 text-xs text-[var(--text-muted)] border border-[var(--border)] rounded-lg hover:border-[var(--primary)]/30 hover:text-[var(--primary)] transition-colors motion-reduce:transition-none"
+            >
+              <Flag size={12} aria-hidden="true" />
+              Report
+            </button>
+          </>
+        )}
+        {(!user || user.id === store.user_id) && (
+          <ShareButton
+            title={`${store.name} on CampusCravings`}
+            text={`Check out ${store.name} on CampusCravings — homemade food, pickup at ${store.pickup_area}.`}
+            path={`/feed/${sellerId}`}
+          />
         )}
       </div>
+
+      {/* About this store (collapsible) */}
+      {hasAbout && (
+        <section
+          aria-labelledby="about-store-heading"
+          className="mb-6 bg-[var(--surface)] rounded-xl border border-[var(--border)] overflow-hidden"
+        >
+          <button
+            type="button"
+            onClick={() => setAboutOpen((v) => !v)}
+            aria-expanded={aboutOpen}
+            aria-controls="about-store-content"
+            className="w-full flex items-center justify-between gap-3 p-4 text-left hover:bg-[var(--background)] transition-colors motion-reduce:transition-none"
+          >
+            <span className="flex items-center gap-2 text-[var(--text)]">
+              <Info
+                size={14}
+                className="text-[var(--primary)]"
+                aria-hidden="true"
+              />
+              <span
+                id="about-store-heading"
+                className="text-sm font-semibold"
+              >
+                About this store
+              </span>
+            </span>
+            <ChevronDown
+              size={16}
+              aria-hidden="true"
+              className={`text-[var(--text-muted)] transition-transform motion-reduce:transition-none ${
+                aboutOpen ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+          {aboutOpen && (
+            <div
+              id="about-store-content"
+              className="px-4 pb-4 space-y-3 border-t border-[var(--border)] pt-3"
+            >
+              {store.description && (
+                <p className="text-sm text-[var(--text-muted)] leading-relaxed">
+                  {store.description}
+                </p>
+              )}
+              <div className="grid sm:grid-cols-2 gap-2">
+                {store.pickup_area && (
+                  <div className="flex items-start gap-2">
+                    <MapPin
+                      size={14}
+                      className="text-[var(--primary)] mt-0.5 shrink-0"
+                      aria-hidden="true"
+                    />
+                    <div className="min-w-0">
+                      <p className="text-[11px] uppercase tracking-wide text-[var(--text-subtle)]">
+                        Pickup area
+                      </p>
+                      <p className="text-sm text-[var(--text)]">
+                        {store.pickup_area}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {store.food_type && (
+                  <div className="flex items-start gap-2">
+                    <Utensils
+                      size={14}
+                      className="text-[var(--primary)] mt-0.5 shrink-0"
+                      aria-hidden="true"
+                    />
+                    <div className="min-w-0">
+                      <p className="text-[11px] uppercase tracking-wide text-[var(--text-subtle)]">
+                        Cuisine
+                      </p>
+                      <p className="text-sm text-[var(--text)]">
+                        {store.food_type}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {store.profile?.full_name && (
+                  <div className="flex items-start gap-2">
+                    <Star
+                      size={14}
+                      className="text-[var(--primary)] mt-0.5 shrink-0"
+                      aria-hidden="true"
+                    />
+                    <div className="min-w-0">
+                      <p className="text-[11px] uppercase tracking-wide text-[var(--text-subtle)]">
+                        Run by
+                      </p>
+                      <p className="text-sm text-[var(--text)]">
+                        {store.profile.full_name}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                <div className="flex items-start gap-2">
+                  <span
+                    aria-hidden="true"
+                    className={`mt-1 inline-block w-2.5 h-2.5 rounded-full shrink-0 ${
+                      isOpen ? "bg-[var(--success)]" : "bg-[var(--text-subtle)]"
+                    }`}
+                  />
+                  <div className="min-w-0">
+                    <p className="text-[11px] uppercase tracking-wide text-[var(--text-subtle)]">
+                      Status
+                    </p>
+                    <p className="text-sm text-[var(--text)]">
+                      {isOpen ? "Accepting orders" : "Currently closed"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
+      {!store.is_approved && (
+        <div
+          role="status"
+          className="mb-4 p-3 bg-[var(--danger-soft)] border border-[var(--danger)]/30 rounded-xl text-sm text-[var(--text)]"
+        >
+          <strong className="font-semibold">
+            This shop hasn&apos;t been approved yet.
+          </strong>{" "}
+          You can browse the menu, but pre-orders are disabled until the seller
+          is verified.
+        </div>
+      )}
 
       {!isOpen && (
         <div
@@ -208,24 +417,85 @@ export default function SellerStoreClient({
         </div>
       )}
 
+      {store.is_approved && isOpen && items.length === 0 && (
+        <div
+          role="status"
+          className="mb-4 p-3 bg-[var(--surface)] border border-[var(--border)] rounded-xl text-sm text-[var(--text-muted)]"
+        >
+          The kitchen&apos;s quiet right now — this seller has no active items
+          on the menu. Check back soon.
+        </div>
+      )}
+
       {/* Menu */}
       <SectionHeader
         title="Menu"
         variant="accent-line"
-        subtitle={`${items.length} ${items.length === 1 ? "dish" : "dishes"} available`}
+        subtitle={
+          activeDiets.length > 0
+            ? `Showing ${filteredItems.length} of ${items.length} ${items.length === 1 ? "dish" : "dishes"} matching your filters`
+            : `${items.length} ${items.length === 1 ? "dish" : "dishes"} available`
+        }
+        rightSlot={
+          availableDiets.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => setActiveDiets([])}
+              disabled={activeDiets.length === 0}
+              aria-label="Clear dietary filters"
+              className="text-xs font-medium text-[var(--primary)] hover:underline motion-reduce:transition-none disabled:opacity-0 disabled:pointer-events-none"
+            >
+              Clear filters
+            </button>
+          ) : null
+        }
       />
 
-      {items.length > 0 ? (
+      {availableDiets.length > 0 && (
+        <div
+          role="group"
+          aria-label="Dietary filters"
+          className="flex items-center gap-2 overflow-x-auto pb-1 mb-4 -mx-1 px-1 scrollbar-thin"
+        >
+          {availableDiets.map((tag) => (
+            <FilterChip
+              key={tag}
+              label={tag}
+              isActive={activeDiets.includes(tag)}
+              onClick={() => toggleDiet(tag)}
+            />
+          ))}
+        </div>
+      )}
+
+      {error ? (
+        <ErrorState
+          error={error}
+          title="Couldn't load this menu"
+          onRetry={() => {
+            setError(null);
+            if (typeof window !== "undefined") window.location.reload();
+          }}
+        />
+      ) : filteredItems.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-          {items.map((item) => (
+          {filteredItems.map((item) => (
             <ItemCard key={item.id} item={item} />
           ))}
         </div>
-      ) : (
+      ) : items.length === 0 ? (
         <EmptyState
           icon={Inbox}
           title="No items listed yet"
           message="Check back later — this seller may be updating their menu."
+        />
+      ) : (
+        <EmptyState
+          icon={Inbox}
+          title="No items match your filters"
+          message="Try clearing your dietary filters to see more of the menu."
+          ctaLabel="Clear filters"
+          ctaHref="#"
         />
       )}
 

@@ -1,7 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { ToastContainer } from "@/components/ui/toast";
+import { SWRegister } from "@/components/ui/sw-register";
+import { PerfBudget } from "@/components/dev/perf-budget";
 import "./globals.css";
 
 const inter = Inter({
@@ -20,6 +22,20 @@ export const metadata: Metadata = {
   title: "CampusCravings — BRAC University Food Marketplace",
   description:
     "Buy and pre-order homemade food from fellow BRAC University students. Campus-only, peer-to-peer food marketplace.",
+  manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+  appleWebApp: {
+    capable: true,
+    title: "CampusCravings",
+    statusBarStyle: "default",
+  },
   openGraph: {
     title: "CampusCravings — BRAC University Food Marketplace",
     description:
@@ -38,6 +54,12 @@ export const metadata: Metadata = {
     process.env.NEXT_PUBLIC_SITE_URL ||
       (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
   ),
+};
+
+export const viewport: Viewport = {
+  themeColor: "#DC2626",
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({
@@ -64,6 +86,8 @@ export default function RootLayout({
           {children}
         </ThemeProvider>
         <ToastContainer />
+        <SWRegister />
+        <PerfBudget />
       </body>
     </html>
   );

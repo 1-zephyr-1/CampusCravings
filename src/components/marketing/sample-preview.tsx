@@ -59,7 +59,7 @@ export async function SamplePreview() {
               </Link>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-              {stores.map((store) => (
+              {stores.map((store, idx) => (
                 <Link
                   key={store.id}
                   href={`/feed/${store.id}`}
@@ -73,6 +73,7 @@ export async function SamplePreview() {
                         fill
                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                         className="object-cover group-hover:scale-105 transition-transform duration-300 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+                        priority={idx === 0}
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-3xl">

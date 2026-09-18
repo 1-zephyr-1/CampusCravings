@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Upload, X, ArrowLeft, Save } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { ItemCard } from "@/components/feed/item-card";
 
 export default function EditItemPage({
   params,
@@ -258,8 +259,26 @@ export default function EditItemPage({
 
   const totalPhotos = existingUrls.length + newFiles.length;
 
+  // Build a synthetic FoodItem for the live preview using the current form
+  // state, including any newly uploaded photo previews.
+  const allPhotoUrls = [...existingUrls, ...previews];
+  const previewItem: FoodItem = item
+    ? {
+        ...item,
+        name: form.name,
+        description: form.description,
+        price: Number(form.price) || 0,
+        quantity: Number(form.quantity) || 0,
+        spice_level: form.spice_level,
+        ordering_window: form.ordering_window || null,
+        dietary_tags: form.dietary_tags,
+        photo_urls: allPhotoUrls,
+        store: store ?? item.store,
+      }
+    : null;
+
   return (
-    <div className="max-w-2xl mx-auto px-4 md:px-6 py-4">
+    <div className="max-w-5xl mx-auto px-4 md:px-6 py-4">
       <div className="flex items-center gap-3 mb-4">
         <Link
           href="/seller/items"
@@ -273,7 +292,8 @@ export default function EditItemPage({
         </h1>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
+        <form onSubmit={handleSubmit} className="space-y-4">
         <div className="p-4 bg-[var(--surface)] rounded-xl border border-[var(--border)] space-y-4">
           <div>
             <label htmlFor="edit-name" className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">
@@ -518,7 +538,7 @@ export default function EditItemPage({
             <>
               <span
                 aria-hidden="true"
-                className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"
+                className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin motion-reduce:animate-none"
               />
               Saving...
             </>
@@ -530,6 +550,29 @@ export default function EditItemPage({
           )}
         </button>
       </form>
+
+      <aside className="mt-6 lg:mt-0" aria-label="Item preview">
+        <div className="lg:sticky lg:top-4 p-4 bg-[var(--surface)] rounded-xl border border-[var(--border)]">
+          <span className="block text-xs font-medium text-[var(--text-muted)] mb-3">
+            Live preview
+          </span>
+          {previewItem ? (
+            <div className="pointer-events-none">
+              <ItemCard item={previewItem} />
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-10 px-4 text-center border border-dashed border-[var(--border)] rounded-xl">
+              <p className="text-xs text-[var(--text-subtle)]">
+                Start editing to see how your item will look in the feed.
+              </p>
+            </div>
+          )}
+          <p className="mt-3 text-[10px] text-[var(--text-subtle)] leading-relaxed">
+            This is how buyers will see your item in the feed. Pricing, photos, and dietary tags update in real time.
+          </p>
+        </div>
+      </aside>
+      </div>
     </div>
   );
 }

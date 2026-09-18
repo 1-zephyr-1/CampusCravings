@@ -10,6 +10,7 @@ import {
   Tag,
   AlertTriangle,
   Shield,
+  Activity,
 } from "lucide-react";
 import { useAuth } from "@/components/ui/auth-provider";
 import { clsx } from "clsx";
@@ -21,6 +22,7 @@ const navItems = [
   { href: "/creator/listings", label: "Listings", icon: UtensilsCrossed },
   { href: "/creator/categories", label: "Categories", icon: Tag },
   { href: "/creator/reports", label: "Reports", icon: AlertTriangle },
+  { href: "/creator/activity", label: "Activity", icon: Activity },
 ];
 
 export function CreatorSidebar() {

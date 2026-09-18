@@ -48,7 +48,7 @@ export function QuantityStepper({
           btn,
           "rounded-md border border-[var(--border)] flex items-center justify-center",
           "text-[var(--text-muted)] hover:border-[var(--primary)] hover:text-[var(--primary)]",
-          "disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          "disabled:opacity-30 disabled:cursor-not-allowed transition-colors motion-reduce:transition-none"
         )}
       >
         <Minus size={size === "sm" ? 12 : 14} />
@@ -72,7 +72,7 @@ export function QuantityStepper({
           btn,
           "rounded-md border border-[var(--border)] flex items-center justify-center",
           "text-[var(--text-muted)] hover:border-[var(--primary)] hover:text-[var(--primary)]",
-          "disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          "disabled:opacity-30 disabled:cursor-not-allowed transition-colors motion-reduce:transition-none"
         )}
       >
         <Plus size={size === "sm" ? 12 : 14} />

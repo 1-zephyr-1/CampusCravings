@@ -4,9 +4,51 @@ import { Search, Bell, Moon, Sun, Utensils } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useAuth } from "@/components/ui/auth-provider";
 import { useSupabase } from "@/lib/supabase/use-client";
+import { toast } from "@/components/ui/toast";
+import {
+  DEFAULT_NOTIF_PREFS,
+  NOTIF_PREFS_STORAGE_KEY,
+  type NotificationPrefKey,
+  type NotificationPrefs,
+} from "@/components/notifications/notification-prefs";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import type { NotificationType } from "@/types";
+
+/**
+ * Map a notification's `type` to its preference key. Falls back to
+ * `orderUpdates` so we never silently drop a notification the user actually
+ * cares about (e.g. `system` rows from platform maintenance notices).
+ */
+function prefKeyForType(type: NotificationType | undefined): NotificationPrefKey {
+  switch (type) {
+    case "message":
+      return "messages";
+    case "promotion":
+      return "promotions";
+    case "order":
+    case "system":
+    default:
+      return "orderUpdates";
+  }
+}
+
+function readPrefsSync(): NotificationPrefs {
+  if (typeof window === "undefined") return DEFAULT_NOTIF_PREFS;
+  try {
+    const raw = window.localStorage.getItem(NOTIF_PREFS_STORAGE_KEY);
+    if (!raw) return DEFAULT_NOTIF_PREFS;
+    const parsed = JSON.parse(raw) as Partial<NotificationPrefs>;
+    return {
+      orderUpdates: parsed.orderUpdates ?? DEFAULT_NOTIF_PREFS.orderUpdates,
+      messages: parsed.messages ?? DEFAULT_NOTIF_PREFS.messages,
+      promotions: parsed.promotions ?? DEFAULT_NOTIF_PREFS.promotions,
+    };
+  } catch {
+    return DEFAULT_NOTIF_PREFS;
+  }
+}
 
 export function TopBar() {
   const { theme, setTheme } = useTheme();
@@ -40,8 +82,25 @@ export function TopBar() {
           table: "notifications",
           filter: `user_id=eq.${profile!.id}`,
         },
-        () => {
+        (payload) => {
+          const incoming = (payload.new ?? {}) as {
+            title?: string;
+            link?: string | null;
+            type?: NotificationType;
+          };
+
           setUnreadCount((prev) => prev + 1);
+
+          // Honor the user's local notification preferences. If they opted out
+          // of this category, still bump the bell badge but don't pop a toast.
+          const prefs = readPrefsSync();
+          if (prefs[prefKeyForType(incoming.type)]) {
+            toast(
+              incoming.title ?? "New notification",
+              "info",
+              incoming.link ? { label: "Open", href: incoming.link } : undefined
+            );
+          }
         }
       )
       .subscribe();
@@ -49,12 +108,12 @@ export function TopBar() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [profile]);
+  }, [profile, supabase]);
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     if (searchQuery.trim()) {
-      router.push(`/feed?q=${encodeURIComponent(searchQuery.trim())}`);
+      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
     }
   }
 
@@ -97,14 +156,14 @@ export function TopBar() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search for food, sellers..."
-              className="w-full pl-9 pr-4 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-sm text-[var(--text)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)] transition-colors"
+              className="w-full pl-9 pr-4 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-sm text-[var(--text)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)] transition-colors motion-reduce:transition-none"
             />
           </div>
         </form>
 
         <div className="flex items-center gap-1 ml-auto">
           <Link
-            href="/profile?tab=notifications"
+            href="/notifications"
             aria-label={
               unreadCount > 0
                 ? `Notifications, ${unreadCount} unread`

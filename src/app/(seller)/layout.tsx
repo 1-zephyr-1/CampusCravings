@@ -24,7 +24,7 @@ function SellerGuard({ children }: { children: React.ReactNode }) {
         aria-label="Loading"
         className="flex min-h-screen items-center justify-center"
       >
-        <span className="h-8 w-8 border-[3px] border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
+        <span className="h-8 w-8 border-[3px] border-[var(--primary)] border-t-transparent rounded-full animate-spin motion-reduce:animate-none" />
       </div>
     );
   }
@@ -58,7 +58,13 @@ export default function SellerLayout({
           <Sidebar />
           <div className="flex-1 flex flex-col min-w-0">
             <TopBar />
-            <main id="main-content" className="flex-1 pb-20 md:pb-0">{children}</main>
+            <main
+              id="main-content"
+              tabIndex={-1}
+              className="flex-1 pb-20 md:pb-0"
+            >
+              {children}
+            </main>
           </div>
           <BottomNav />
         </div>

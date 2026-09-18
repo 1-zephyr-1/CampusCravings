@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, Suspense } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { clsx } from "clsx";
 import {
   Mail,
@@ -13,16 +14,35 @@ import {
   Utensils,
   GraduationCap,
   Users,
+  AlertCircle,
 } from "lucide-react";
 import { useSupabase } from "@/lib/supabase/use-client";
 import { BRACU_DOMAIN } from "@/lib/constants";
 import { signInWithEmail, signUpWithEmail } from "@/lib/actions/auth";
+import { isBracuEmail } from "@/lib/validators/email";
 
 /**
  * Sign-in / sign-up card embedded in the marketing landing page.
  * Pure client component — relies on the parent for layout and spacing.
  */
 export function AuthCard() {
+  return (
+    <Suspense fallback={<AuthCardFallback />}>
+      <AuthCardInner />
+    </Suspense>
+  );
+}
+
+/** Skeleton shown while search params hydrate on the landing page. */
+function AuthCardFallback() {
+  return (
+    <div className="w-full max-w-md mx-auto">
+      <div className="bg-[var(--surface)] rounded-2xl border border-[var(--border)] p-6 shadow-sm h-[420px]" />
+    </div>
+  );
+}
+
+function AuthCardInner() {
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -32,7 +52,17 @@ export function AuthCard() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = useSupabase();
+
+  // Surface OAuth / callback errors passed back as ?error=...
+  const urlError = searchParams.get("error") ?? "";
+  const displayError = error || urlError;
+  // Show the domain warning once the user has typed something email-shaped
+  // (contains an '@') but it isn't a BRACU address. We only warn — server
+  // validation still rejects the submission outright.
+  const showDomainWarning =
+    email.includes("@") && email.trim().length > 0 && !isBracuEmail(email);
 
   async function handleGoogleLogin() {
     setLoading(true);
@@ -51,6 +81,19 @@ export function AuthCard() {
     if (authError) {
       setError(authError.message);
       setLoading(false);
+    }
+  }
+
+  function switchMode(next: "login" | "signup") {
+    setMode(next);
+    setError("");
+    setSuccess("");
+    // Drop the ?error= param so a stale banner doesn't linger.
+    if (urlError) {
+      const params = new URLSearchParams(window.location.search);
+      params.delete("error");
+      const query = params.toString();
+      router.replace(query ? `/?${query}` : "/", { scroll: false });
     }
   }
 
@@ -124,11 +167,7 @@ export function AuthCard() {
             type="button"
             aria-selected={mode === "login"}
             aria-controls="auth-panel"
-            onClick={() => {
-              setMode("login");
-              setError("");
-              setSuccess("");
-            }}
+            onClick={() => switchMode("login")}
             className={clsx(
               "flex-1 py-2 rounded-md text-sm font-medium transition-colors motion-reduce:transition-none",
               mode === "login"
@@ -143,11 +182,7 @@ export function AuthCard() {
             type="button"
             aria-selected={mode === "signup"}
             aria-controls="auth-panel"
-            onClick={() => {
-              setMode("signup");
-              setError("");
-              setSuccess("");
-            }}
+            onClick={() => switchMode("signup")}
             className={clsx(
               "flex-1 py-2 rounded-md text-sm font-medium transition-colors motion-reduce:transition-none",
               mode === "signup"
@@ -193,9 +228,32 @@ export function AuthCard() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder={`you@${BRACU_DOMAIN}`}
                 aria-label="Email address"
+                aria-invalid={showDomainWarning ? "true" : undefined}
+                aria-describedby={showDomainWarning ? "email-domain-warning" : undefined}
                 required
-                className="w-full pl-9 pr-4 py-2.5 bg-[var(--background)] border border-[var(--border)] rounded-lg text-sm text-[var(--text)] placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)]"
+                className={clsx(
+                  "w-full pl-9 pr-4 py-2.5 bg-[var(--background)] border rounded-lg text-sm text-[var(--text)] placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)]",
+                  showDomainWarning
+                    ? "border-[var(--danger)]"
+                    : "border-[var(--border)]"
+                )}
               />
+              {showDomainWarning && (
+                <p
+                  id="email-domain-warning"
+                  role="status"
+                  className="mt-1.5 flex items-start gap-1.5 text-xs text-[var(--danger)]"
+                >
+                  <AlertCircle
+                    size={12}
+                    aria-hidden="true"
+                    className="mt-0.5 shrink-0"
+                  />
+                  <span>
+                    Only BRAC University emails (@{BRACU_DOMAIN}) are accepted.
+                  </span>
+                </p>
+              )}
             </div>
 
             <div className="relative">
@@ -224,6 +282,17 @@ export function AuthCard() {
               </button>
             </div>
 
+            {mode === "login" && (
+              <div className="flex justify-end -mt-1">
+                <Link
+                  href="/forgot-password"
+                  className="text-xs text-[var(--primary)] hover:underline font-medium"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={loading}
@@ -240,12 +309,12 @@ export function AuthCard() {
             </button>
           </form>
 
-          {error && (
+          {displayError && (
             <p
               role="alert"
               className="text-xs text-[var(--danger)] text-center mb-3"
             >
-              {error}
+              {displayError}
             </p>
           )}
           {success && (

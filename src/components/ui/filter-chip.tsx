@@ -32,7 +32,7 @@ export function FilterChip({
       type="button"
       onClick={onClick}
       className={clsx(
-        "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all shrink-0 border",
+        "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all shrink-0 motion-reduce:transition-none border",
         isActive
           ? "bg-[var(--primary)] text-white border-[var(--primary)] shadow-sm"
           : "bg-[var(--surface)] text-[var(--text)] border-[var(--border)] hover:border-[var(--primary)]/40",

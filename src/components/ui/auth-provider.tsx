@@ -131,6 +131,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       cancelled = true;
       subscription.unsubscribe();
     };
+    // fetchProfile is intentionally omitted: it's a fresh closure each render
+    // and only used inside the auth-state callback, so adding it would loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supabase]);
 
   return (

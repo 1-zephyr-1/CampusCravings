@@ -6,7 +6,7 @@ import { useAuth } from "@/components/ui/auth-provider";
 import { useTheme } from "next-themes";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Notification, Store } from "@/types";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import Link from "next/link";
 import Image from "next/image";
 import { clsx } from "clsx";
@@ -29,7 +29,22 @@ import {
   CheckCircle2,
   Circle,
   Edit,
+  Star,
+  MessageSquare,
+  type LucideIcon,
 } from "lucide-react";
+
+type ActivityKind = "order" | "message" | "favorite" | "review";
+
+interface ActivityEntry {
+  id: string;
+  kind: ActivityKind;
+  icon: LucideIcon;
+  iconClass: string;
+  iconBgClass: string;
+  label: string;
+  createdAt: string;
+}
 
 export default function ProfilePage() {
   return (
@@ -56,7 +71,13 @@ function ProfileContent() {
   const activeTab = searchParams.get("tab") || "overview";
 
   const [store, setStore] = useState<Store | null>(null);
-  const [stats, setStats] = useState({ orders: 0, itemsSold: 0 });
+  const [stats, setStats] = useState({
+    orders: 0,
+    itemsSold: 0,
+    totalSpent: 0,
+    avgRating: 0,
+  });
+  const [activity, setActivity] = useState<ActivityEntry[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -86,7 +107,11 @@ function ProfileContent() {
             })
             .eq("order.store_id", storeData.id);
 
-          setStats({ orders: orderCount || 0, itemsSold: itemCount || 0 });
+          setStats((s) => ({
+            ...s,
+            orders: orderCount || 0,
+            itemsSold: itemCount || 0,
+          }));
         }
       }
 
@@ -96,8 +121,140 @@ function ProfileContent() {
           .select("*", { count: "exact", head: true })
           .eq("customer_id", profile!.id);
 
-        setStats({ orders: orderCount || 0, itemsSold: 0 });
+        const { data: completedRows } = await supabase
+          .from("orders")
+          .select("total_price")
+          .eq("customer_id", profile!.id)
+          .eq("status", "completed");
+
+        const totalSpent = (completedRows || []).reduce(
+          (sum, row) => sum + (row.total_price || 0),
+          0
+        );
+
+        const { data: reviewRows } = await supabase
+          .from("reviews")
+          .select("rating")
+          .eq("user_id", profile!.id);
+
+        const avgRating =
+          reviewRows && reviewRows.length > 0
+            ? reviewRows.reduce((sum, r) => sum + r.rating, 0) /
+              reviewRows.length
+            : 0;
+
+        setStats((s) => ({
+          ...s,
+          orders: orderCount || 0,
+          itemsSold: 0,
+          totalSpent,
+          avgRating,
+        }));
       }
+
+      // Activity timeline: fetch last 10 across multiple tables.
+      const userId = profile!.id;
+      const [ordersRes, messagesRes, favoritesRes, reviewsRes] =
+        await Promise.all([
+          supabase
+            .from("orders")
+            .select("id, created_at, store:stores!orders_store_id_fkey(name)")
+            .eq("customer_id", userId)
+            .order("created_at", { ascending: false })
+            .limit(10),
+          supabase
+            .from("messages")
+            .select("id, created_at")
+            .eq("sender_id", userId)
+            .order("created_at", { ascending: false })
+            .limit(10),
+          supabase
+            .from("favorites")
+            .select("created_at, item:food_items!favorites_item_id_fkey(name), store:stores!favorites_store_id_fkey(name)")
+            .eq("user_id", userId)
+            .order("created_at", { ascending: false })
+            .limit(10),
+          supabase
+            .from("reviews")
+            .select("id, created_at, store:stores!reviews_store_id_fkey(name)")
+            .eq("user_id", userId)
+            .order("created_at", { ascending: false })
+            .limit(10),
+        ]);
+
+      const combined: ActivityEntry[] = [];
+
+      (ordersRes.data || []).forEach((o) => {
+        const storeName = (o as { store?: { name?: string } }).store?.name;
+        combined.push({
+          id: `order-${o.id}`,
+          kind: "order",
+          icon: ShoppingBag,
+          iconClass: "text-[var(--primary)]",
+          iconBgClass: "bg-[var(--primary-soft)]",
+          label: storeName
+            ? `Placed an order at ${storeName}`
+            : "Placed an order",
+          createdAt: o.created_at,
+        });
+      });
+
+      (messagesRes.data || []).forEach((m) => {
+        combined.push({
+          id: `message-${m.id}`,
+          kind: "message",
+          icon: MessageSquare,
+          iconClass: "text-[var(--accent)]",
+          iconBgClass: "bg-[var(--accent-soft,var(--primary-soft))]",
+          label: "Sent a message",
+          createdAt: m.created_at,
+        });
+      });
+
+      (favoritesRes.data || []).forEach((f) => {
+        const fav = f as {
+          created_at: string;
+          item?: { name?: string } | null;
+          store?: { name?: string } | null;
+        };
+        const target = fav.item?.name
+          ? fav.item.name
+          : fav.store?.name
+            ? fav.store.name
+            : null;
+        combined.push({
+          id: `fav-${f.created_at}-${target ?? "x"}`,
+          kind: "favorite",
+          icon: Heart,
+          iconClass: "text-[var(--primary)]",
+          iconBgClass: "bg-[var(--primary-soft)]",
+          label: target
+            ? `Favorited ${target}`
+            : "Added a favorite",
+          createdAt: fav.created_at,
+        });
+      });
+
+      (reviewsRes.data || []).forEach((r) => {
+        const review = r as { id: string; created_at: string; store?: { name?: string } | null };
+        combined.push({
+          id: `review-${review.id}`,
+          kind: "review",
+          icon: Star,
+          iconClass: "text-amber-500",
+          iconBgClass: "bg-amber-500/10",
+          label: review.store?.name
+            ? `Reviewed ${review.store.name}`
+            : "Left a review",
+          createdAt: review.created_at,
+        });
+      });
+
+      combined.sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      setActivity(combined.slice(0, 10));
 
       const { data: notifs } = await supabase
         .from("notifications")
@@ -306,7 +463,7 @@ function ProfileContent() {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div className="p-4 bg-[var(--surface)] rounded-xl border border-[var(--border)]">
               <div className="flex items-center gap-2 mb-2">
                 <div className="p-1.5 rounded-lg bg-[var(--primary-soft)]">
@@ -324,7 +481,7 @@ function ProfileContent() {
                 {stats.orders}
               </p>
             </div>
-            {profile.role === "seller" && (
+            {profile.role === "seller" ? (
               <div className="p-4 bg-[var(--surface)] rounded-xl border border-[var(--border)]">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="p-1.5 rounded-lg bg-[var(--warning-soft)]">
@@ -342,8 +499,90 @@ function ProfileContent() {
                   {stats.itemsSold}
                 </p>
               </div>
+            ) : (
+              <>
+                <div className="p-4 bg-[var(--surface)] rounded-xl border border-[var(--border)]">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="p-1.5 rounded-lg bg-[var(--warning-soft)]">
+                      <BarChart3
+                        size={14}
+                        className="text-[var(--warning)]"
+                        aria-hidden="true"
+                      />
+                    </div>
+                    <span className="text-xs text-[var(--text-muted)]">
+                      Total spent
+                    </span>
+                  </div>
+                  <p className="text-xl font-bold text-[var(--text)] font-mono">
+                    ৳{stats.totalSpent}
+                  </p>
+                </div>
+                <div className="p-4 bg-[var(--surface)] rounded-xl border border-[var(--border)]">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="p-1.5 rounded-lg bg-amber-500/10">
+                      <Star
+                        size={14}
+                        className="text-amber-500"
+                        aria-hidden="true"
+                      />
+                    </div>
+                    <span className="text-xs text-[var(--text-muted)]">
+                      Avg rating given
+                    </span>
+                  </div>
+                  <p className="text-xl font-bold text-[var(--text)] font-mono">
+                    {stats.avgRating > 0 ? stats.avgRating.toFixed(1) : "—"}
+                  </p>
+                </div>
+              </>
             )}
           </div>
+
+          {activity.length > 0 && (
+            <div className="p-4 bg-[var(--surface)] rounded-xl border border-[var(--border)]">
+              <h3 className="text-sm font-semibold text-[var(--text)] mb-3 flex items-center gap-2">
+                <BarChart3 size={14} aria-hidden="true" />
+                Recent activity
+              </h3>
+              <ol className="space-y-2" role="list">
+                {activity.map((entry) => {
+                  const Icon = entry.icon;
+                  return (
+                    <li
+                      key={entry.id}
+                      className="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--background)] transition-colors motion-reduce:transition-none"
+                    >
+                      <div
+                        className={clsx(
+                          "p-1.5 rounded-lg shrink-0",
+                          entry.iconBgClass
+                        )}
+                      >
+                        <Icon
+                          size={14}
+                          className={entry.iconClass}
+                          aria-hidden="true"
+                        />
+                      </div>
+                      <p className="text-sm text-[var(--text)] flex-1 min-w-0 truncate">
+                        {entry.label}
+                      </p>
+                      <time
+                        dateTime={entry.createdAt}
+                        title={format(new Date(entry.createdAt), "PPpp")}
+                        className="text-[11px] text-[var(--text-subtle)] shrink-0"
+                      >
+                        {formatDistanceToNow(new Date(entry.createdAt), {
+                          addSuffix: true,
+                        })}
+                      </time>
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
+          )}
 
           <div className="p-4 bg-[var(--surface)] rounded-xl border border-[var(--border)]">
             <h3 className="text-sm font-semibold text-[var(--text)] mb-3 flex items-center gap-2">
@@ -366,6 +605,26 @@ function ProfileContent() {
                   <span className="text-sm text-[var(--text)]">
                     Edit name &amp; photo
                   </span>
+                </div>
+                <ChevronRight
+                  size={16}
+                  className="text-[var(--text-muted)]"
+                  aria-hidden="true"
+                />
+              </Link>
+              <Link
+                href="/profile/settings"
+                className="flex items-center justify-between p-3 rounded-xl hover:bg-[var(--background)] transition-colors motion-reduce:transition-none"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-[var(--primary-soft)]">
+                    <Settings
+                      size={16}
+                      className="text-[var(--primary)]"
+                      aria-hidden="true"
+                    />
+                  </div>
+                  <span className="text-sm text-[var(--text)]">Settings</span>
                 </div>
                 <ChevronRight
                   size={16}

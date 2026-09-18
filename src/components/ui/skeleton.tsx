@@ -16,7 +16,7 @@ export function Skeleton({ className, shape = "rect" }: SkeletonProps) {
     <div
       aria-hidden="true"
       className={clsx(
-        "animate-shimmer bg-[length:200%_100%]",
+        "animate-shimmer motion-reduce:animate-none bg-[length:200%_100%]",
         shape === "rect" && "rounded-md",
         shape === "pill" && "rounded-full",
         shape === "circle" && "rounded-full",
