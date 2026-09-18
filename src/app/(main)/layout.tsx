@@ -1,4 +1,5 @@
 import { AuthProvider } from "@/components/ui/auth-provider";
+import { CartProvider } from "@/components/cart/cart-provider";
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/top-bar";
 import { BottomNav } from "@/components/layout/bottom-nav";
@@ -10,14 +11,22 @@ export default function MainLayout({
 }) {
   return (
     <AuthProvider>
-      <div className="flex min-h-screen">
-        <Sidebar />
-        <div className="flex-1 flex flex-col min-w-0">
-          <TopBar />
-          <main className="flex-1 pb-20 md:pb-0">{children}</main>
+      <CartProvider>
+        <div className="flex min-h-screen">
+          <Sidebar />
+          <div className="flex-1 flex flex-col min-w-0">
+            <TopBar />
+            <main
+              id="main-content"
+              className="flex-1 pb-20 md:pb-0"
+              tabIndex={-1}
+            >
+              {children}
+            </main>
+          </div>
+          <BottomNav />
         </div>
-        <BottomNav />
-      </div>
+      </CartProvider>
     </AuthProvider>
   );
 }

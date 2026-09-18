@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+
+import { useSupabase } from "@/lib/supabase/use-client";
 import { Check, X, Store as StoreIcon } from "lucide-react";
+import { Pagination } from "@/components/ui/pagination";
 
 interface SellerWithProfile {
   id: string;
@@ -28,21 +30,26 @@ export default function SellersPage() {
   const [sellers, setSellers] = useState<SellerWithProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "pending" | "approved">("all");
-  const supabase = createClient();
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 20;
+  const [totalItems, setTotalItems] = useState(0);
+  const supabase = useSupabase();
 
   useEffect(() => {
+    async function fetchSellers() {
+      const { data, count } = await supabase
+        .from("stores")
+        .select("*, profile:profiles!stores_user_id_fkey(full_name, email, is_approved)", { count: "exact" })
+        .order("created_at", { ascending: false })
+        .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
+
+      setSellers((data as SellerWithProfile[]) || []);
+      setTotalItems(count || 0);
+      setLoading(false);
+    }
+
     fetchSellers();
-  }, []);
-
-  async function fetchSellers() {
-    const { data } = await supabase
-      .from("stores")
-      .select("*, profile:profiles!stores_user_id_fkey(full_name, email, is_approved)")
-      .order("created_at", { ascending: false });
-
-    setSellers((data as SellerWithProfile[]) || []);
-    setLoading(false);
-  }
+  }, [page]);
 
   async function handleApprove(storeId: string, userId: string) {
     await supabase
@@ -105,7 +112,7 @@ export default function SellersPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="h-8 w-8 border-3 border-tomato border-t-transparent rounded-full animate-spin" />
+        <div className="h-8 w-8 border-[3px] border-red-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -113,7 +120,7 @@ export default function SellersPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-espresso dark:text-cream">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
           Sellers
         </h1>
         <div className="flex gap-2">
@@ -123,13 +130,13 @@ export default function SellersPage() {
               onClick={() => setFilter(f)}
               className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
                 filter === f
-                  ? "bg-tomato text-white"
-                  : "bg-sand/50 text-bark hover:bg-sand dark:bg-[#3A2E20] dark:text-cream/70"
+                  ? "bg-red-600 text-white"
+                  : "bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300"
               }`}
             >
               {f.charAt(0).toUpperCase() + f.slice(1)}
               {f === "pending" && (
-                <span className="ml-1.5 bg-tomato/20 text-tomato px-1.5 rounded-full text-xs">
+                <span className="ml-1.5 bg-red-600/20 text-red-600 px-1.5 rounded-full text-xs">
                   {sellers.filter((s) => !s.is_approved).length}
                 </span>
               )}
@@ -138,24 +145,24 @@ export default function SellersPage() {
         </div>
       </div>
 
-      <div className="bg-surface dark:bg-surface-dark border border-sand dark:border-[#4A3D30] rounded-xl overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-sand dark:border-[#4A3D30]">
-                <th className="text-left px-5 py-3 font-medium text-bark dark:text-cream/60">
+              <tr className="border-b border-gray-200 dark:border-gray-700">
+                <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400">
                   Seller
                 </th>
-                <th className="text-left px-5 py-3 font-medium text-bark dark:text-cream/60">
+                <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400">
                   Store
                 </th>
-                <th className="text-left px-5 py-3 font-medium text-bark dark:text-cream/60">
+                <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400">
                   Status
                 </th>
-                <th className="text-left px-5 py-3 font-medium text-bark dark:text-cream/60">
+                <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400">
                   Joined
                 </th>
-                <th className="text-right px-5 py-3 font-medium text-bark dark:text-cream/60">
+                <th className="text-right px-5 py-3 font-medium text-gray-500 dark:text-gray-400">
                   Actions
                 </th>
               </tr>
@@ -165,7 +172,7 @@ export default function SellersPage() {
                 <tr>
                   <td
                     colSpan={5}
-                    className="px-5 py-10 text-center text-bark dark:text-cream/50"
+                    className="px-5 py-10 text-center text-gray-500 dark:text-gray-400"
                   >
                     No sellers found
                   </td>
@@ -174,20 +181,20 @@ export default function SellersPage() {
                 filtered.map((seller) => (
                   <tr
                     key={seller.id}
-                    className="border-b border-sand/50 dark:border-[#4A3D30]/50 last:border-0 hover:bg-sand/20 dark:hover:bg-[#3A2E20]/50 transition-colors"
+                    className="border-b border-gray-200/50 dark:border-gray-700/50 last:border-0 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors"
                   >
                     <td className="px-5 py-3">
-                      <p className="font-medium text-espresso dark:text-cream">
+                      <p className="font-medium text-gray-900 dark:text-white">
                         {seller.profile?.full_name || "N/A"}
                       </p>
-                      <p className="text-xs text-bark dark:text-cream/50">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
                         {seller.profile?.email}
                       </p>
                     </td>
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-2">
-                        <StoreIcon size={14} className="text-bark" />
-                        <span className="text-espresso dark:text-cream">
+                        <StoreIcon size={14} className="text-gray-500" />
+                        <span className="text-gray-900 dark:text-white">
                           {seller.name}
                         </span>
                       </div>
@@ -196,14 +203,14 @@ export default function SellersPage() {
                       <span
                         className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
                           seller.is_approved
-                            ? "bg-herb/20 text-herb"
-                            : "bg-turmeric/20 text-amber-700"
+                            ? "bg-green-600/20 text-green-600"
+                            : "bg-amber-500/20 text-amber-600"
                         }`}
                       >
                         {seller.is_approved ? "Approved" : "Pending"}
                       </span>
                     </td>
-                    <td className="px-5 py-3 text-bark dark:text-cream/50">
+                    <td className="px-5 py-3 text-gray-500 dark:text-gray-400">
                       {new Date(seller.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-5 py-3 text-right">
@@ -214,7 +221,7 @@ export default function SellersPage() {
                               onClick={() =>
                                 handleApprove(seller.id, seller.user_id)
                               }
-                              className="p-1.5 rounded-lg bg-herb/10 text-herb hover:bg-herb/20 transition-colors"
+                              className="p-1.5 rounded-lg bg-green-600/10 text-green-600 hover:bg-green-600/20 transition-colors"
                               title="Approve"
                             >
                               <Check size={16} />
@@ -223,7 +230,7 @@ export default function SellersPage() {
                               onClick={() =>
                                 handleReject(seller.id, seller.user_id)
                               }
-                              className="p-1.5 rounded-lg bg-chili/10 text-chili hover:bg-chili/20 transition-colors"
+                              className="p-1.5 rounded-lg bg-red-600/10 text-red-600 hover:bg-red-600/20 transition-colors"
                               title="Reject"
                             >
                               <X size={16} />
@@ -235,7 +242,7 @@ export default function SellersPage() {
                             onClick={() =>
                               handleReject(seller.id, seller.user_id)
                             }
-                            className="px-3 py-1 rounded-lg text-xs font-medium bg-chili/10 text-chili hover:bg-chili/20 transition-colors"
+                            className="px-3 py-1 rounded-lg text-xs font-medium bg-red-600/10 text-red-600 hover:bg-red-600/20 transition-colors"
                           >
                             Revoke
                           </button>
@@ -249,6 +256,8 @@ export default function SellersPage() {
           </table>
         </div>
       </div>
+
+      <Pagination page={page} totalPages={Math.ceil(totalItems / PAGE_SIZE)} onPageChange={setPage} />
     </div>
   );
 }

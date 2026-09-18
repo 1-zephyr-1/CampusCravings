@@ -1,17 +1,19 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { createClient } from "@/lib/supabase/client";
+
+import { useSupabase } from "@/lib/supabase/use-client";
 import { useAuth } from "@/components/ui/auth-provider";
 import { useRouter } from "next/navigation";
 import { Store } from "@/types";
-import { PICKUP_AREAS, MAX_UPLOAD_SIZE, ALLOWED_IMAGE_TYPES } from "@/lib/constants";
+import { MAX_UPLOAD_SIZE, ALLOWED_IMAGE_TYPES } from "@/lib/constants";
 import { clsx } from "clsx";
-import { Upload, X, Save, Store as StoreIcon } from "lucide-react";
+import { Upload, X, Save } from "lucide-react";
+import Image from "next/image";
 
 export default function SellerStorefrontPage() {
   const { profile } = useAuth();
-  const supabase = createClient();
+  const supabase = useSupabase();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -26,6 +28,7 @@ export default function SellerStorefrontPage() {
     name: "",
     description: "",
     pickup_area: "",
+    food_type: "",
     is_open: false,
   });
 
@@ -45,6 +48,7 @@ export default function SellerStorefrontPage() {
           name: data.name,
           description: data.description || "",
           pickup_area: data.pickup_area,
+          food_type: data.food_type || "",
           is_open: data.is_open,
         });
         if (data.photo_url) {
@@ -125,7 +129,7 @@ export default function SellerStorefrontPage() {
         .update({
           name: form.name.trim(),
           description: form.description.trim(),
-          pickup_area: form.pickup_area,
+          pickup_area: form.pickup_area.trim(),
           is_open: form.is_open,
           photo_url: photoUrl,
         })
@@ -143,7 +147,7 @@ export default function SellerStorefrontPage() {
           user_id: profile!.id,
           name: form.name.trim(),
           description: form.description.trim(),
-          pickup_area: form.pickup_area,
+          pickup_area: form.pickup_area.trim(),
           is_open: form.is_open,
           photo_url: photoUrl,
         })
@@ -181,14 +185,14 @@ export default function SellerStorefrontPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 md:px-6 py-4">
-      <h1 className="text-xl font-bold text-espresso dark:text-cream mb-4">
+      <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
         {store ? "Edit Storefront" : "Set Up Storefront"}
       </h1>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="p-4 bg-surface dark:bg-surface-dark rounded-xl border border-sand dark:border-[#4A3D30] space-y-4">
+        <div className="p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 space-y-4">
           <div>
-            <label className="block text-xs font-medium text-bark mb-1.5">
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">
               Store Name *
             </label>
             <input
@@ -198,12 +202,12 @@ export default function SellerStorefrontPage() {
                 setForm((prev) => ({ ...prev, name: e.target.value }))
               }
               placeholder="e.g. Amma's Kitchen"
-              className="w-full px-3 py-2.5 bg-cream dark:bg-cream-dark border border-sand dark:border-[#4A3D30] rounded-xl text-sm text-espresso dark:text-cream placeholder:text-bark/50 focus:outline-none focus:ring-2 focus:ring-tomato/30 focus:border-tomato"
+              className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-bark mb-1.5">
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">
               Description
             </label>
             <textarea
@@ -213,51 +217,64 @@ export default function SellerStorefrontPage() {
               }
               placeholder="Tell customers about your cooking..."
               rows={3}
-              className="w-full px-3 py-2.5 bg-cream dark:bg-cream-dark border border-sand dark:border-[#4A3D30] rounded-xl text-sm text-espresso dark:text-cream placeholder:text-bark/50 focus:outline-none focus:ring-2 focus:ring-tomato/30 focus:border-tomato resize-none"
+              className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500 resize-none"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-bark mb-1.5">
-              Pickup Area
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">
+              Pickup Location *
             </label>
-            <div className="flex flex-wrap gap-2">
-              {PICKUP_AREAS.map((area) => (
-                <button
-                  key={area}
-                  type="button"
-                  onClick={() =>
-                    setForm((prev) => ({ ...prev, pickup_area: area }))
-                  }
-                  className={clsx(
-                    "px-3 py-1.5 rounded-full text-xs font-medium border transition-colors",
-                    form.pickup_area === area
-                      ? "bg-tomato text-white border-tomato"
-                      : "bg-cream dark:bg-cream-dark border-sand dark:border-[#4A3D30] text-bark hover:border-tomato/50"
-                  )}
-                >
-                  {area}
-                </button>
-              ))}
-            </div>
+            <input
+              type="text"
+              value={form.pickup_area}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, pickup_area: e.target.value }))
+              }
+              placeholder="e.g. Room 301, Student Union Building"
+              className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500"
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Enter the exact location where students can pick up their orders
+            </p>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-bark mb-1.5">
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">
+              Food Type / Cuisine
+            </label>
+            <input
+              type="text"
+              value={form.food_type}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, food_type: e.target.value }))
+              }
+              placeholder="e.g. Bangladeshi, Indian, Fast Food, Desserts"
+              className="w-full px-3 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500"
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              What type of food do you specialize in?
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">
               Store Photo
             </label>
 
             {preview && (
               <div className="relative inline-block mb-2">
-                <img
+                <Image
                   src={preview}
                   alt="Store photo"
-                  className="w-24 h-24 object-cover rounded-xl border border-sand dark:border-[#4A3D30]"
+                  width={96}
+                  height={96}
+                  className="w-24 h-24 object-cover rounded-xl border border-gray-200 dark:border-gray-700"
                 />
                 <button
                   type="button"
                   onClick={removePhoto}
-                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-chili text-white rounded-full flex items-center justify-center"
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-600 text-white rounded-full flex items-center justify-center"
                 >
                   <X size={10} />
                 </button>
@@ -267,7 +284,7 @@ export default function SellerStorefrontPage() {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-2 px-4 py-2.5 border border-sand dark:border-[#4A3D30] rounded-xl text-xs font-medium text-bark hover:border-tomato/50 hover:text-tomato transition-colors"
+              className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-medium text-gray-500 hover:border-red-500/50 hover:text-red-600 transition-colors"
             >
               <Upload size={14} />
               {preview ? "Change Photo" : "Upload Photo"}
@@ -283,13 +300,13 @@ export default function SellerStorefrontPage() {
           </div>
         </div>
 
-        <div className="p-4 bg-surface dark:bg-surface-dark rounded-xl border border-sand dark:border-[#4A3D30]">
+        <div className="p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-espresso dark:text-cream">
+              <p className="text-sm font-medium text-gray-900 dark:text-white">
                 Store Status
               </p>
-              <p className="text-xs text-bark">
+              <p className="text-xs text-gray-500">
                 {form.is_open
                   ? "Customers can place orders"
                   : "Store is closed for orders"}
@@ -297,12 +314,15 @@ export default function SellerStorefrontPage() {
             </div>
             <button
               type="button"
+              role="switch"
+              aria-checked={form.is_open}
+              aria-label="Store open/closed"
               onClick={() =>
                 setForm((prev) => ({ ...prev, is_open: !prev.is_open }))
               }
               className={clsx(
                 "relative w-11 h-6 rounded-full transition-colors",
-                form.is_open ? "bg-herb" : "bg-sand dark:bg-[#4A3D30]"
+                form.is_open ? "bg-green-600" : "bg-gray-300 dark:bg-gray-600"
               )}
             >
               <span
@@ -316,13 +336,13 @@ export default function SellerStorefrontPage() {
         </div>
 
         {error && (
-          <p className="text-xs text-chili font-medium text-center">{error}</p>
+          <p className="text-xs text-red-600 font-medium text-center">{error}</p>
         )}
 
         <button
           type="submit"
           disabled={saving}
-          className="w-full py-3 bg-tomato text-white rounded-full text-sm font-semibold hover:bg-tomato-hover transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+          className="w-full py-3 bg-red-600 text-white rounded-full text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
         >
           {saving ? (
             <>

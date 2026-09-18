@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useEffect, useState, useCallback, useRef } from "react";
+
+import { useSupabase } from "@/lib/supabase/use-client";
 import { useAuth } from "@/components/ui/auth-provider";
 import { Order, OrderStatus, Store } from "@/types";
 import { ORDER_STATUSES, MAX_PENDING_ORDERS } from "@/lib/constants";
-import { format } from "date-fns";
+
 import { clsx } from "clsx";
 import {
   Check,
@@ -19,7 +20,7 @@ import {
 
 export default function SellerOrdersPage() {
   const { profile } = useAuth();
-  const supabase = createClient();
+  const supabase = useSupabase();
   const [store, setStore] = useState<Store | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,6 +28,7 @@ export default function SellerOrdersPage() {
   const [tab, setTab] = useState<"incoming" | "active" | "completed">(
     "incoming"
   );
+  const initialized = useRef(false);
 
   const fetchOrders = useCallback(async () => {
     if (!store) return;
@@ -61,7 +63,10 @@ export default function SellerOrdersPage() {
 
   useEffect(() => {
     if (!store) return;
-    fetchOrders();
+    if (!initialized.current) {
+      initialized.current = true;
+      fetchOrders();
+    }
 
     const channel = supabase
       .channel("seller-orders")
@@ -128,14 +133,14 @@ export default function SellerOrdersPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 md:px-6 py-4">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-bold text-espresso dark:text-cream">
+        <h1 className="text-xl font-bold text-gray-900">
           Orders
         </h1>
         {store && (
           <span
             className={clsx(
               "px-3 py-1 rounded-full text-xs font-semibold",
-              store.is_open ? "bg-herb/20 text-herb" : "bg-bark/20 text-bark"
+              store.is_open ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-500"
             )}
           >
             {store.is_open ? "Store Open" : "Store Closed"}
@@ -144,15 +149,15 @@ export default function SellerOrdersPage() {
       </div>
 
       {pendingOrders.length >= MAX_PENDING_ORDERS && (
-        <div className="mb-4 p-3 bg-turmeric/10 border border-turmeric/30 rounded-xl">
-          <p className="text-xs font-medium text-turmeric">
+        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+          <p className="text-xs font-medium text-amber-500">
             You have {MAX_PENDING_ORDERS} pending orders. Accept or decline
             incoming orders before taking new ones.
           </p>
         </div>
       )}
 
-      <div className="flex gap-1 bg-surface dark:bg-surface-dark rounded-lg p-1 border border-sand dark:border-[#4A3D30] mb-4">
+      <div className="flex gap-1 bg-white rounded-lg p-1 border border-gray-200 mb-4">
         {tabs.map((t) => (
           <button
             key={t.key}
@@ -160,8 +165,8 @@ export default function SellerOrdersPage() {
             className={clsx(
               "flex-1 py-1.5 rounded-md text-xs font-medium transition-colors",
               tab === t.key
-                ? "bg-tomato text-white"
-                : "text-bark hover:text-espresso"
+                ? "bg-red-600 text-white"
+                : "text-gray-500 hover:text-gray-900"
             )}
           >
             {t.label} ({t.count})
@@ -174,7 +179,7 @@ export default function SellerOrdersPage() {
           {[...Array(3)].map((_, i) => (
             <div
               key={i}
-              className="h-32 bg-sand/30 dark:bg-[#3A2E20] rounded-xl animate-pulse"
+              className="h-32 bg-gray-200 rounded-xl animate-pulse"
             />
           ))}
         </div>
@@ -183,7 +188,7 @@ export default function SellerOrdersPage() {
           {displayOrders.map((order) => (
             <div
               key={order.id}
-              className="p-4 bg-surface dark:bg-surface-dark rounded-xl border border-sand dark:border-[#4A3D30]"
+              className="p-4 bg-white rounded-xl border border-gray-200"
             >
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div className="min-w-0">
@@ -196,19 +201,19 @@ export default function SellerOrdersPage() {
                     >
                       {ORDER_STATUSES[order.status]?.label}
                     </span>
-                    <span className="text-[10px] text-bark/50">
+                    <span className="text-[10px] text-gray-400">
                       #{order.id.slice(0, 8)}
                     </span>
                   </div>
-                  <p className="text-sm font-medium text-espresso dark:text-cream">
+                  <p className="text-sm font-medium text-gray-900">
                     {getAnonymizedName(order)}
                   </p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-sm font-bold font-mono text-tomato">
+                  <p className="text-sm font-bold font-mono text-red-600">
                     ৳{order.total_price.toFixed(0)}
                   </p>
-                  <p className="text-[10px] text-bark/50 font-mono">
+                  <p className="text-[10px] text-gray-400 font-mono">
                     <Clock size={10} className="inline mr-0.5" />
                     {order.pickup_time}
                   </p>
@@ -221,10 +226,10 @@ export default function SellerOrdersPage() {
                     key={oi.id}
                     className="flex items-center justify-between text-xs"
                   >
-                    <span className="text-bark truncate">
+                    <span className="text-gray-500 truncate">
                       {oi.quantity}× {oi.item?.name || "Item"}
                     </span>
-                    <span className="font-mono text-espresso dark:text-cream shrink-0 ml-2">
+                    <span className="font-mono text-gray-900 shrink-0 ml-2">
                       ৳{(oi.price_at_time * oi.quantity).toFixed(0)}
                     </span>
                   </div>
@@ -232,12 +237,12 @@ export default function SellerOrdersPage() {
               </div>
 
               {order.notes && (
-                <div className="flex items-start gap-1.5 mb-3 p-2 bg-cream dark:bg-cream-dark rounded-lg">
+                <div className="flex items-start gap-1.5 mb-3 p-2 bg-gray-50 rounded-lg">
                   <MessageSquare
                     size={12}
-                    className="text-bark shrink-0 mt-0.5"
+                    className="text-gray-500 shrink-0 mt-0.5"
                   />
-                  <p className="text-xs text-bark">{order.notes}</p>
+                  <p className="text-xs text-gray-500">{order.notes}</p>
                 </div>
               )}
 
@@ -247,7 +252,7 @@ export default function SellerOrdersPage() {
                     <button
                       onClick={() => updateOrderStatus(order.id, "declined")}
                       disabled={updatingId === order.id}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-full border border-chili/30 text-chili text-xs font-semibold hover:bg-chili/10 transition-colors disabled:opacity-50"
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-full border border-red-300 text-red-600 text-xs font-semibold hover:bg-red-50 transition-colors disabled:opacity-50"
                     >
                       <X size={14} />
                       Decline
@@ -258,7 +263,7 @@ export default function SellerOrdersPage() {
                         updatingId === order.id ||
                         pendingOrders.length >= MAX_PENDING_ORDERS
                       }
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-full bg-herb text-white text-xs font-semibold hover:bg-herb/90 transition-colors disabled:opacity-50"
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-full bg-green-600 text-white text-xs font-semibold hover:bg-green-700 transition-colors disabled:opacity-50"
                     >
                       <Check size={14} />
                       Accept
@@ -269,7 +274,7 @@ export default function SellerOrdersPage() {
                   <button
                     onClick={() => updateOrderStatus(order.id, "ready")}
                     disabled={updatingId === order.id}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-full bg-turmeric text-espresso text-xs font-semibold hover:bg-turmeric/90 transition-colors disabled:opacity-50"
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-full bg-amber-500 text-white text-xs font-semibold hover:bg-amber-600 transition-colors disabled:opacity-50"
                   >
                     <ChefHat size={14} />
                     Mark Ready
@@ -279,7 +284,7 @@ export default function SellerOrdersPage() {
                   <button
                     onClick={() => updateOrderStatus(order.id, "completed")}
                     disabled={updatingId === order.id}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-full bg-herb text-white text-xs font-semibold hover:bg-herb/90 transition-colors disabled:opacity-50"
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-full bg-green-600 text-white text-xs font-semibold hover:bg-green-700 transition-colors disabled:opacity-50"
                   >
                     <PackageCheck size={14} />
                     Mark Completed
@@ -291,8 +296,8 @@ export default function SellerOrdersPage() {
         </div>
       ) : (
         <div className="text-center py-16">
-          <RefreshCw size={32} className="mx-auto mb-3 text-bark/30" />
-          <p className="text-sm text-bark">
+          <RefreshCw size={32} className="mx-auto mb-3 text-gray-300" />
+          <p className="text-sm text-gray-500">
             {tab === "incoming"
               ? "No incoming orders"
               : tab === "active"

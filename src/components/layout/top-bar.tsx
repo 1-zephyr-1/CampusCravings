@@ -1,9 +1,9 @@
 "use client";
 
-import { Search, Bell, Moon, Sun } from "lucide-react";
+import { Search, Bell, Moon, Sun, Utensils } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useAuth } from "@/components/ui/auth-provider";
-import { createClient } from "@/lib/supabase/client";
+import { useSupabase } from "@/lib/supabase/use-client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -14,7 +14,7 @@ export function TopBar() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useSupabase();
 
   useEffect(() => {
     if (!profile) return;
@@ -59,12 +59,18 @@ export function TopBar() {
   }
 
   return (
-    <header className="sticky top-0 z-40 bg-surface/95 backdrop-blur-sm border-b border-sand dark:bg-surface-dark/95 dark:border-[#4A3D30]">
-      <div className="flex items-center gap-4 h-14 px-4 md:px-6">
-        {/* Logo - mobile */}
-        <Link href="/feed" className="flex items-center gap-2 md:hidden">
-          <span className="text-xl">🍛</span>
-          <span className="text-lg font-bold text-espresso dark:text-cream">
+    <header className="sticky top-0 z-40 bg-[var(--surface)]/95 backdrop-blur-sm border-b border-[var(--border)]">
+      <div className="flex items-center gap-3 h-14 px-4 md:px-6">
+        {/* Logo (mobile-only because sidebar shows it on desktop) */}
+        <Link
+          href="/feed"
+          className="flex items-center gap-2 md:hidden"
+          aria-label="CampusCravings home"
+        >
+          <div className="w-8 h-8 bg-[var(--primary)] rounded-lg flex items-center justify-center">
+            <Utensils size={16} className="text-white" aria-hidden="true" />
+          </div>
+          <span className="text-lg font-bold text-[var(--text)]">
             CampusCravings
           </span>
         </Link>
@@ -72,47 +78,62 @@ export function TopBar() {
         {/* Search bar */}
         <form
           onSubmit={handleSearch}
+          role="search"
           className="flex-1 max-w-xl mx-auto hidden sm:flex"
         >
           <div className="relative w-full">
+            <label htmlFor="topbar-search" className="sr-only">
+              Search food and sellers
+            </label>
             <Search
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-bark"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none"
               size={16}
               strokeWidth={1.75}
+              aria-hidden="true"
             />
             <input
-              type="text"
+              id="topbar-search"
+              type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search for food, sellers..."
-              className="w-full pl-9 pr-4 py-2 bg-cream border border-sand rounded-lg text-sm text-espresso placeholder:text-bark/60 focus:outline-none focus:ring-2 focus:ring-tomato/30 focus:border-tomato dark:bg-cream-dark dark:border-[#4A3D30] dark:text-cream dark:placeholder:text-cream/40"
+              className="w-full pl-9 pr-4 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-lg text-sm text-[var(--text)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)] transition-colors"
             />
           </div>
         </form>
 
-        <div className="flex items-center gap-2 ml-auto">
-          {/* Notifications */}
+        <div className="flex items-center gap-1 ml-auto">
           <Link
             href="/profile?tab=notifications"
-            className="relative p-2 rounded-lg text-bark hover:bg-sand/50 dark:hover:bg-[#3A2E20] dark:text-cream/70 transition-colors"
+            aria-label={
+              unreadCount > 0
+                ? `Notifications, ${unreadCount} unread`
+                : "Notifications"
+            }
+            className="relative p-2 rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg)] transition-colors motion-reduce:transition-none"
           >
-            <Bell size={20} strokeWidth={1.75} />
+            <Bell size={20} strokeWidth={1.75} aria-hidden="true" />
             {unreadCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-tomato text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+              <span
+                aria-hidden="true"
+                className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 bg-[var(--primary)] text-white text-[10px] font-bold rounded-full flex items-center justify-center"
+              >
                 {unreadCount > 9 ? "9+" : unreadCount}
               </span>
             )}
           </Link>
 
-          {/* Dark mode toggle */}
           <button
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="p-2 rounded-lg text-bark hover:bg-sand/50 dark:hover:bg-[#3A2E20] dark:text-cream/70 transition-colors"
+            aria-label={
+              theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
+            }
+            className="p-2 rounded-lg text-[var(--text-muted)] hover:bg-[var(--bg)] transition-colors motion-reduce:transition-none"
           >
             {theme === "dark" ? (
-              <Sun size={20} strokeWidth={1.75} />
+              <Sun size={20} strokeWidth={1.75} aria-hidden="true" />
             ) : (
-              <Moon size={20} strokeWidth={1.75} />
+              <Moon size={20} strokeWidth={1.75} aria-hidden="true" />
             )}
           </button>
         </div>

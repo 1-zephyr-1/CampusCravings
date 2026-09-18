@@ -1,32 +1,121 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-cream: #FDF6EC;
-  --color-cream-dark: #1A1410;
-  --color-surface: #FFF9F0;
-  --color-surface-dark: #2A2018;
-  --color-tomato: #D4442A;
-  --color-tomato-hover: #B8321F;
-  --color-tomato-light: #F2D4D0;
-  --color-turmeric: #F5A623;
-  --color-turmeric-light: #FFF0D4;
-  --color-espresso: #2D1B0E;
-  --color-bark: #8B7355;
-  --color-sand: #E8DDD0;
-  --color-herb: #4A7C59;
-  --color-chili: #C1292E;
+  --color-white: #FFFFFF;
+  --color-black: #000000;
+  --color-red-50: #FEF2F2;
+  --color-red-100: #FEE2E2;
+  --color-red-200: #FECACA;
+  --color-red-300: #FCA5A5;
+  --color-red-400: #F87171;
+  --color-red-500: #EF4444;
+  --color-red-600: #DC2626;
+  --color-red-700: #B91C1C;
+  --color-red-800: #991B1B;
+  --color-red-900: #7F1D1D;
+  --color-gray-50: #F9FAFB;
+  --color-gray-100: #F3F4F6;
+  --color-gray-200: #E5E7EB;
+  --color-gray-300: #D1D5DB;
+  --color-gray-400: #9CA3AF;
+  --color-gray-500: #4B5563;
+  --color-gray-600: #374151;
+  --color-gray-700: #1F2937;
+  --color-gray-800: #1F2937;
+  --color-gray-900: #111827;
+  --color-green-500: #22C55E;
+  --color-green-600: #16A34A;
+  --color-amber-500: #F59E0B;
+  --color-surface: #FFFFFF;
+  --color-surface-dark: #1A1A1A;
+  --color-bg: #F8F8F8;
+  --color-bg-dark: #121212;
+  --color-card: #FFFFFF;
+  --color-card-dark: #1E1E1E;
+  --color-border: #E5E7EB;
+  --color-border-dark: #333333;
+  --color-text: #111827;
+  --color-text-dark: #F9FAFB;
+  --color-text-muted: #4B5563;
+  --color-text-muted-dark: #D1D5DB;
+  --color-text-subtle: #6B7280;
+  --color-text-subtle-dark: #9CA3AF;
   --font-sans: var(--font-inter);
   --font-mono: var(--font-jetbrains);
 }
 
+/* Semantic design tokens — single source of truth.
+   All colors used in components MUST resolve through one of these tokens
+   or one of the Tailwind color classes above (which now map to AA-readable
+   gray-500 = #4B5563 instead of #6B7280). */
 :root {
-  --background: #FDF6EC;
-  --foreground: #2D1B0E;
+  --background: #F8F8F8;
+  --foreground: #111827;
+
+  --surface: #FFFFFF;
+  --surface-elev: #FFFFFF;
+
+  --text: #111827;
+  --text-muted: #4B5563;
+  --text-subtle: #6B7280;
+
+  --border: #E5E7EB;
+  --border-strong: #D1D5DB;
+
+  --primary: #DC2626;
+  --primary-hover: #B91C1C;
+  --primary-soft: #FEF2F2;
+
+  --accent: #F59E0B;
+  --success: #16A34A;
+  --success-soft: #DCFCE7;
+  --danger: #DC2626;
+  --danger-soft: #FEE2E2;
+  --warning: #F59E0B;
+  --warning-soft: #FEF3C7;
+
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08);
+
+  --focus-ring: 0 0 0 3px rgba(220, 38, 38, 0.35);
 }
 
 .dark {
-  --background: #1A1410;
-  --foreground: #FDF6EC;
+  --background: #121212;
+  --foreground: #F9FAFB;
+
+  --surface: #1E1E1E;
+  --surface-elev: #262626;
+
+  --text: #F9FAFB;
+  --text-muted: #D1D5DB;
+  --text-subtle: #9CA3AF;
+
+  --border: #333333;
+  --border-strong: #4B5563;
+
+  --primary: #F87171;
+  --primary-hover: #FCA5A5;
+  --primary-soft: rgba(220, 38, 38, 0.15);
+
+  --accent: #FCD34D;
+  --success: #22C55E;
+  --success-soft: rgba(22, 163, 74, 0.2);
+  --danger: #F87171;
+  --danger-soft: rgba(220, 38, 38, 0.2);
+  --warning: #FCD34D;
+  --warning-soft: rgba(245, 158, 11, 0.2);
+
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+
+  --focus-ring: 0 0 0 3px rgba(248, 113, 113, 0.45);
 }
 
 body {
@@ -35,26 +124,30 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 
-/* Scrollbar styling */
+/* Visible, accessible focus styles for every interactive element */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Smooth scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
-
 ::-webkit-scrollbar-track {
   background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
-  background: #E8DDD0;
+  background: var(--border-strong);
   border-radius: 3px;
 }
-
 .dark ::-webkit-scrollbar-thumb {
-  background: #4A3D30;
+  background: var(--border-strong);
 }
 
-/* Custom animations */
+/* Animations */
 @keyframes slide-up {
   from {
     opacity: 0;
@@ -71,6 +164,11 @@ body {
   to { opacity: 1; }
 }
 
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
 .animate-slide-up {
   animation: slide-up 0.3s ease-out;
 }
@@ -79,11 +177,30 @@ body {
   animation: fade-in 0.2s ease-out;
 }
 
-/* Sold out stamp effect */
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--border) 0%,
+    var(--border-strong) 50%,
+    var(--border) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-slide-up,
+  .animate-fade-in,
+  .animate-shimmer {
+    animation: none;
+  }
+}
+
+/* Tailwind helpers used throughout the app */
 .stamp-sold-out {
   transform: rotate(-12deg);
-  border: 3px solid #C1292E;
-  color: #C1292E;
+  border: 3px solid var(--primary);
+  color: var(--primary);
   padding: 2px 12px;
   font-weight: 700;
   text-transform: uppercase;
@@ -91,57 +208,45 @@ body {
   opacity: 0.85;
 }
 
-/* Price tag style */
 .price-tag {
   font-variant-numeric: tabular-nums;
-  border: 1px dashed #E8DDD0;
+  border: 1px dashed var(--border);
   padding: 2px 8px;
   border-radius: 4px;
 }
 
-.dark .price-tag {
-  border-color: #4A3D30;
-}
-
-/* Category chip active state */
 .chip-active {
-  background-color: #D4442A;
+  background-color: var(--primary);
   color: white;
 }
 
 .chip-inactive {
-  background-color: #FFF9F0;
-  color: #2D1B0E;
-  border: 1px solid #E8DDD0;
+  background-color: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
 }
 
 .dark .chip-inactive {
-  background-color: #2A2018;
-  color: #FDF6EC;
-  border-color: #4A3D30;
+  background-color: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
 }
 
-/* Accent line on left */
 .accent-line {
-  border-left: 3px solid #D4442A;
+  border-left: 3px solid var(--primary);
   padding-left: 12px;
 }
 
-/* Order status stepper */
 .step-connector {
   width: 2px;
-  background: #E8DDD0;
+  background: var(--border);
   margin-left: 11px;
 }
 
 .step-connector.active {
-  background: #D4442A;
+  background: var(--primary);
 }
 
 .dark .step-connector {
-  background: #4A3D30;
-}
-
-.dark .step-connector.active {
-  background: #D4442A;
+  background: var(--border);
 }

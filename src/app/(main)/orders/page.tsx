@@ -1,18 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useSupabase } from "@/lib/supabase/use-client";
 import { useAuth } from "@/components/ui/auth-provider";
 import { Order, OrderStatus } from "@/types";
 import { ORDER_STATUSES } from "@/lib/constants";
 import { format } from "date-fns";
 import Link from "next/link";
 import { clsx } from "clsx";
-import { ChevronRight, Clock } from "lucide-react";
+import { ChevronRight, Clock, Package } from "lucide-react";
 
 export default function OrdersPage() {
   const { user } = useAuth();
-  const supabase = createClient();
+  const supabase = useSupabase();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"active" | "completed">("active");
@@ -69,19 +69,19 @@ export default function OrdersPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 md:px-6 py-4">
-      <h1 className="text-xl font-bold text-espresso dark:text-cream mb-4">
+      <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50 mb-4">
         My Orders
       </h1>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-surface dark:bg-surface-dark rounded-lg p-1 border border-sand dark:border-[#4A3D30] mb-4">
+      <div className="flex gap-1 bg-white dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700 mb-4">
         <button
           onClick={() => setTab("active")}
           className={clsx(
             "flex-1 py-1.5 rounded-md text-xs font-medium transition-colors",
             tab === "active"
-              ? "bg-tomato text-white"
-              : "text-bark hover:text-espresso"
+              ? "bg-red-600 text-white"
+              : "text-gray-500 hover:text-gray-900"
           )}
         >
           Active ({activeOrders.length})
@@ -91,8 +91,8 @@ export default function OrdersPage() {
           className={clsx(
             "flex-1 py-1.5 rounded-md text-xs font-medium transition-colors",
             tab === "completed"
-              ? "bg-tomato text-white"
-              : "text-bark hover:text-espresso"
+              ? "bg-red-600 text-white"
+              : "text-gray-500 hover:text-gray-900"
           )}
         >
           History ({completedOrders.length})
@@ -102,7 +102,7 @@ export default function OrdersPage() {
       {loading ? (
         <div className="space-y-3">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-24 bg-sand/30 dark:bg-[#3A2E20] rounded-xl animate-pulse" />
+            <div key={i} className="h-24 bg-gray-200/30 dark:bg-gray-700/30 rounded-xl animate-pulse" />
           ))}
         </div>
       ) : displayOrders.length > 0 ? (
@@ -111,7 +111,7 @@ export default function OrdersPage() {
             <Link
               key={order.id}
               href={`/orders/${order.id}`}
-              className="block p-4 bg-surface dark:bg-surface-dark rounded-xl border border-sand dark:border-[#4A3D30] hover:shadow-md transition-shadow"
+              className="block p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -125,22 +125,22 @@ export default function OrdersPage() {
                       {ORDER_STATUSES[order.status as OrderStatus]?.label}
                     </span>
                   </div>
-                  <p className="text-sm font-medium text-espresso dark:text-cream truncate">
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-50 truncate">
                     {order.store?.name}
                   </p>
-                  <p className="text-xs text-bark mt-0.5">
+                  <p className="text-xs text-gray-500 mt-0.5">
                     {order.items?.length || 0} items · Pickup: {order.pickup_time}
                   </p>
-                  <p className="text-xs text-bark/50 mt-0.5">
+                  <p className="text-xs text-gray-500/50 mt-0.5">
                     <Clock size={10} className="inline mr-1" />
                     {format(new Date(order.created_at), "MMM d, h:mm a")}
                   </p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-sm font-bold font-mono text-tomato">
+                  <p className="text-sm font-bold font-mono text-red-600">
                     ৳{order.total_price.toFixed(0)}
                   </p>
-                  <ChevronRight size={16} className="text-bark/30 ml-auto mt-2" />
+                  <ChevronRight size={16} className="text-gray-500/30 ml-auto mt-2" />
                 </div>
               </div>
             </Link>
@@ -148,13 +148,13 @@ export default function OrdersPage() {
         </div>
       ) : (
         <div className="text-center py-16">
-          <span className="text-4xl block mb-3">📦</span>
-          <p className="text-sm text-bark">
+          <Package size={40} className="mx-auto mb-3 text-gray-300" />
+          <p className="text-sm text-gray-500">
             {tab === "active" ? "No active orders" : "No order history yet"}
           </p>
           <Link
             href="/feed"
-            className="inline-flex mt-3 px-4 py-2 bg-tomato text-white rounded-xl text-sm font-semibold hover:bg-tomato-hover"
+            className="inline-flex mt-3 px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700"
           >
             Browse Food
           </Link>

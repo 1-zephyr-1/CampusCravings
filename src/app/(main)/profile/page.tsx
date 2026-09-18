@@ -1,13 +1,14 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useSupabase } from "@/lib/supabase/use-client";
 import { useAuth } from "@/components/ui/auth-provider";
 import { useTheme } from "next-themes";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Notification, Order, Store } from "@/types";
+import { Notification, Store } from "@/types";
 import { format } from "date-fns";
 import Link from "next/link";
+import Image from "next/image";
 import { clsx } from "clsx";
 import {
   User,
@@ -30,15 +31,15 @@ import {
 
 export default function ProfilePage() {
   return (
-    <Suspense fallback={<div className="max-w-3xl mx-auto px-4 py-4"><div className="animate-pulse space-y-4"><div className="h-32 bg-sand/30 dark:bg-[#3A2E20] rounded-xl" /></div></div>}>
+    <Suspense fallback={<div className="max-w-3xl mx-auto px-4 py-4"><div className="animate-pulse space-y-4"><div className="h-32 bg-gray-100 dark:bg-gray-700/30 rounded-xl" /></div></div>}>
       <ProfileContent />
     </Suspense>
   );
 }
 
 function ProfileContent() {
-  const { user, profile, loading, refreshProfile } = useAuth();
-  const supabase = createClient();
+  const { profile, loading } = useAuth();
+  const supabase = useSupabase();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { theme, setTheme } = useTheme();
@@ -133,8 +134,8 @@ function ProfileContent() {
     return (
       <div className="max-w-5xl mx-auto px-4 md:px-6 py-4">
         <div className="space-y-4">
-          <div className="h-8 w-48 bg-sand/30 dark:bg-[#3A2E20] rounded-lg animate-pulse" />
-          <div className="h-40 bg-sand/30 dark:bg-[#3A2E20] rounded-xl animate-pulse" />
+          <div className="h-8 w-48 bg-gray-100 dark:bg-gray-700/30 rounded-lg animate-pulse" />
+          <div className="h-40 bg-gray-100 dark:bg-gray-700/30 rounded-xl animate-pulse" />
         </div>
       </div>
     );
@@ -150,11 +151,11 @@ function ProfileContent() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 md:px-6 py-4">
-      <h1 className="text-xl font-bold text-espresso dark:text-cream mb-4">
+      <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
         Profile
       </h1>
 
-      <div className="flex gap-1 bg-surface dark:bg-surface-dark rounded-lg p-1 border border-sand dark:border-[#4A3D30] mb-6">
+      <div className="flex gap-1 bg-white dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700 mb-6">
         {tabs.map((tab) => (
           <Link
             key={tab.id}
@@ -162,14 +163,14 @@ function ProfileContent() {
             className={clsx(
               "relative flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
               activeTab === tab.id
-                ? "bg-tomato text-white"
-                : "text-bark hover:text-espresso dark:hover:text-cream"
+                ? "bg-red-600 text-white"
+                : "text-gray-500 hover:text-gray-900 dark:hover:text-white"
             )}
           >
             <tab.icon size={14} />
             {tab.label}
             {tab.badge ? (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-chili text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
                 {tab.badge}
               </span>
             ) : null}
@@ -179,13 +180,15 @@ function ProfileContent() {
 
       {activeTab === "overview" && (
         <div className="space-y-4">
-          <div className="p-5 bg-surface dark:bg-surface-dark rounded-xl border border-sand dark:border-[#4A3D30]">
+          <div className="p-5 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
             <div className="flex items-start gap-4">
               {profile.avatar_url ? (
-                <img
+                <Image
                   src={profile.avatar_url}
                   alt={profile.full_name}
-                  className="w-16 h-16 rounded-full object-cover border-2 border-sand dark:border-[#4A3D30]"
+                  width={96}
+                  height={96}
+                  className="w-16 h-16 rounded-full object-cover border-2 border-gray-200 dark:border-gray-700"
                 />
               ) : (
                 <div className="w-16 h-16 rounded-full bg-gradient-to-br from-tomato to-turmeric flex items-center justify-center text-white text-xl font-bold">
@@ -193,10 +196,10 @@ function ProfileContent() {
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <h2 className="text-lg font-bold text-espresso dark:text-cream truncate">
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white truncate">
                   {profile.full_name}
                 </h2>
-                <p className="text-sm text-bark flex items-center gap-1.5 mt-0.5">
+                <p className="text-sm text-gray-500 flex items-center gap-1.5 mt-0.5">
                   <Mail size={13} />
                   {profile.email}
                 </p>
@@ -205,10 +208,10 @@ function ProfileContent() {
                     className={clsx(
                       "px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize",
                       profile.role === "seller"
-                        ? "bg-turmeric/20 text-amber-700"
+                        ? "bg-amber-500/20 text-amber-700"
                         : profile.role === "creator"
-                        ? "bg-tomato/20 text-tomato"
-                        : "bg-bark/20 text-bark"
+                        ? "bg-red-600/20 text-red-600"
+                        : "bg-gray-100 text-gray-500"
                     )}
                   >
                     {profile.role}
@@ -217,7 +220,7 @@ function ProfileContent() {
               </div>
               <Link
                 href="/profile/edit"
-                className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-bark border border-sand rounded-lg hover:border-tomato/30 hover:text-tomato transition-colors dark:border-[#4A3D30]"
+                className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-500 border border-gray-200 rounded-lg hover:border-red-600/30 hover:text-red-600 transition-colors dark:border-gray-700"
               >
                 <Edit size={12} />
                 Edit
@@ -226,111 +229,111 @@ function ProfileContent() {
           </div>
 
           {profile.role === "seller" && store && (
-            <div className="p-4 bg-surface dark:bg-surface-dark rounded-xl border border-sand dark:border-[#4A3D30]">
-              <h3 className="text-sm font-semibold text-espresso dark:text-cream mb-3 flex items-center gap-2">
+            <div className="p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
                 <StoreIcon size={14} />
                 Seller Links
               </h3>
               <div className="space-y-2">
                 <Link
                   href={`/feed/${store.id}`}
-                  className="flex items-center justify-between p-3 rounded-xl hover:bg-sand/50 dark:hover:bg-[#3A2E20] transition-colors"
+                  className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-turmeric/10">
-                      <StoreIcon size={16} className="text-turmeric" />
+                    <div className="p-2 rounded-lg bg-amber-500/10">
+                      <StoreIcon size={16} className="text-amber-500" />
                     </div>
-                    <span className="text-sm font-medium text-espresso dark:text-cream">
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">
                       My Store
                     </span>
                   </div>
-                  <ChevronRight size={16} className="text-bark" />
+                  <ChevronRight size={16} className="text-gray-500" />
                 </Link>
                 <Link
                   href="/seller/dashboard"
-                  className="flex items-center justify-between p-3 rounded-xl hover:bg-sand/50 dark:hover:bg-[#3A2E20] transition-colors"
+                  className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-tomato/10">
-                      <BarChart3 size={16} className="text-tomato" />
+                    <div className="p-2 rounded-lg bg-red-600/10">
+                      <BarChart3 size={16} className="text-red-600" />
                     </div>
-                    <span className="text-sm font-medium text-espresso dark:text-cream">
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">
                       Seller Dashboard
                     </span>
                   </div>
-                  <ChevronRight size={16} className="text-bark" />
+                  <ChevronRight size={16} className="text-gray-500" />
                 </Link>
               </div>
             </div>
           )}
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="p-4 bg-surface dark:bg-surface-dark rounded-xl border border-sand dark:border-[#4A3D30]">
+            <div className="p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
               <div className="flex items-center gap-2 mb-2">
-                <div className="p-1.5 rounded-lg bg-tomato/10">
-                  <ShoppingBag size={14} className="text-tomato" />
+                <div className="p-1.5 rounded-lg bg-red-600/10">
+                  <ShoppingBag size={14} className="text-red-600" />
                 </div>
-                <span className="text-xs text-bark">Total Orders</span>
+                <span className="text-xs text-gray-500">Total Orders</span>
               </div>
-              <p className="text-xl font-bold text-espresso dark:text-cream font-mono">
+              <p className="text-xl font-bold text-gray-900 dark:text-white font-mono">
                 {stats.orders}
               </p>
             </div>
             {profile.role === "seller" && (
-              <div className="p-4 bg-surface dark:bg-surface-dark rounded-xl border border-sand dark:border-[#4A3D30]">
+              <div className="p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="p-1.5 rounded-lg bg-turmeric/10">
-                    <Package size={14} className="text-turmeric" />
+                  <div className="p-1.5 rounded-lg bg-amber-500/10">
+                    <Package size={14} className="text-amber-500" />
                   </div>
-                  <span className="text-xs text-bark">Items Sold</span>
+                  <span className="text-xs text-gray-500">Items Sold</span>
                 </div>
-                <p className="text-xl font-bold text-espresso dark:text-cream font-mono">
+                <p className="text-xl font-bold text-gray-900 dark:text-white font-mono">
                   {stats.itemsSold}
                 </p>
               </div>
             )}
           </div>
 
-          <div className="p-4 bg-surface dark:bg-surface-dark rounded-xl border border-sand dark:border-[#4A3D30]">
-            <h3 className="text-sm font-semibold text-espresso dark:text-cream mb-3 flex items-center gap-2">
+          <div className="p-4 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
               <Settings size={14} />
               Settings
             </h3>
             <div className="space-y-2">
               <Link
                 href="/profile/edit"
-                className="flex items-center justify-between p-3 rounded-xl hover:bg-sand/50 dark:hover:bg-[#3A2E20] transition-colors"
+                className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-bark/10">
-                    <User size={16} className="text-bark" />
+                    <User size={16} className="text-gray-500" />
                   </div>
-                  <span className="text-sm text-espresso dark:text-cream">
+                  <span className="text-sm text-gray-900 dark:text-white">
                     Edit Name & Photo
                   </span>
                 </div>
-                <ChevronRight size={16} className="text-bark" />
+                <ChevronRight size={16} className="text-gray-500" />
               </Link>
               <button
                 onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-sand/50 dark:hover:bg-[#3A2E20] transition-colors"
+                className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-turmeric/10">
+                  <div className="p-2 rounded-lg bg-amber-500/10">
                     {theme === "dark" ? (
-                      <Sun size={16} className="text-turmeric" />
+                      <Sun size={16} className="text-amber-500" />
                     ) : (
-                      <Moon size={16} className="text-turmeric" />
+                      <Moon size={16} className="text-amber-500" />
                     )}
                   </div>
-                  <span className="text-sm text-espresso dark:text-cream">
+                  <span className="text-sm text-gray-900 dark:text-white">
                     {theme === "dark" ? "Light Mode" : "Dark Mode"}
                   </span>
                 </div>
                 <div
                   className={clsx(
                     "w-9 h-5 rounded-full transition-colors relative",
-                    theme === "dark" ? "bg-tomato" : "bg-bark/30"
+                    theme === "dark" ? "bg-red-600" : "bg-bark/30"
                   )}
                 >
                   <div
@@ -343,13 +346,13 @@ function ProfileContent() {
               </button>
               <button
                 onClick={handleSignOut}
-                className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-chili/5 transition-colors"
+                className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-red-600/5 transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-chili/10">
-                    <LogOut size={16} className="text-chili" />
+                  <div className="p-2 rounded-lg bg-red-600/10">
+                    <LogOut size={16} className="text-red-600" />
                   </div>
-                  <span className="text-sm text-chili font-medium">
+                  <span className="text-sm text-red-600 font-medium">
                     Sign Out
                   </span>
                 </div>
@@ -364,7 +367,7 @@ function ProfileContent() {
           {notifications.length > 0 && (
             <button
               onClick={handleMarkAllRead}
-              className="text-xs text-tomato font-medium hover:underline mb-2"
+              className="text-xs text-red-600 font-medium hover:underline mb-2"
             >
               Mark all as read
             </button>
@@ -374,10 +377,10 @@ function ProfileContent() {
               <div
                 key={notif.id}
                 className={clsx(
-                  "p-4 bg-surface dark:bg-surface-dark rounded-xl border dark:border-[#4A3D30] transition-colors",
+                  "p-4 bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 transition-colors",
                   notif.is_read
-                    ? "border-sand"
-                    : "border-turmeric/30 bg-turmeric/5"
+                    ? "border-gray-200"
+                    : "border-amber-500/30 bg-amber-500/5"
                 )}
               >
                 <div className="flex items-start gap-3">
@@ -385,30 +388,30 @@ function ProfileContent() {
                     {notif.is_read ? (
                       <CheckCircle2
                         size={16}
-                        className="text-bark/30"
+                        className="text-gray-300"
                       />
                     ) : (
                       <Circle
                         size={16}
-                        className="text-turmeric fill-turmeric/20"
+                        className="text-amber-500 fill-turmeric/20"
                       />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-espresso dark:text-cream">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">
                       {notif.title}
                     </p>
-                    <p className="text-xs text-bark mt-0.5">
+                    <p className="text-xs text-gray-500 mt-0.5">
                       {notif.message}
                     </p>
-                    <p className="text-[10px] text-bark/50 mt-1">
+                    <p className="text-[10px] text-gray-400 mt-1">
                       {format(new Date(notif.created_at), "MMM d, h:mm a")}
                     </p>
                   </div>
                   {notif.link && (
                     <Link
                       href={notif.link}
-                      className="text-xs text-tomato font-medium shrink-0"
+                      className="text-xs text-red-600 font-medium shrink-0"
                     >
                       View
                     </Link>
@@ -418,8 +421,8 @@ function ProfileContent() {
             ))
           ) : (
             <div className="text-center py-16">
-              <Bell size={40} className="mx-auto mb-3 text-bark/30" />
-              <p className="text-sm text-bark">No notifications yet</p>
+              <Bell size={40} className="mx-auto mb-3 text-gray-300" />
+              <p className="text-sm text-gray-500">No notifications yet</p>
             </div>
           )}
         </div>
@@ -427,13 +430,13 @@ function ProfileContent() {
 
       {activeTab === "favorites" && (
         <div className="text-center py-16">
-          <Heart size={40} className="mx-auto mb-3 text-bark/30" />
-          <p className="text-sm text-bark mb-3">
+          <Heart size={40} className="mx-auto mb-3 text-gray-300" />
+          <p className="text-sm text-gray-500 mb-3">
             View your saved items and stores
           </p>
           <Link
             href="/profile/favorites"
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-tomato text-white rounded-full text-sm font-semibold hover:bg-tomato-hover transition-colors"
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-red-600 text-white rounded-full text-sm font-semibold hover:bg-red-700 transition-colors"
           >
             <Heart size={16} />
             View Favorites

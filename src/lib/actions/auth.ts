@@ -3,9 +3,14 @@
 import { createClient } from "@/lib/supabase/server";
 import { BRACU_DOMAIN, CREATOR_EMAIL } from "@/lib/constants";
 
+function isBracuEmail(email: string): boolean {
+  const parts = email.split("@");
+  return parts.length === 2 && parts[1] === BRACU_DOMAIN;
+}
+
 export async function signUpWithEmail(email: string, password: string, fullName: string) {
-  // Validate BRACU domain
-  if (!email.endsWith(`@${BRACU_DOMAIN}`)) {
+  // Validate BRACU domain — strict domain check, not suffix
+  if (!isBracuEmail(email)) {
     return { error: `Only BRAC University students (@${BRACU_DOMAIN}) can sign up.` };
   }
 
@@ -47,8 +52,8 @@ export async function signUpWithEmail(email: string, password: string, fullName:
 }
 
 export async function signInWithEmail(email: string, password: string) {
-  // Validate BRACU domain
-  if (!email.endsWith(`@${BRACU_DOMAIN}`)) {
+  // Validate BRACU domain — strict
+  if (!isBracuEmail(email)) {
     return { error: `Only BRAC University students (@${BRACU_DOMAIN}) can sign in.` };
   }
 

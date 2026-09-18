@@ -1,29 +1,36 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+
+import { useSupabase } from "@/lib/supabase/use-client";
 import { Profile } from "@/types";
 import { Shield, ShieldOff, Ban } from "lucide-react";
+import { Pagination } from "@/components/ui/pagination";
 
 export default function UsersPage() {
   const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "active" | "banned">("all");
-  const supabase = createClient();
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 20;
+  const [totalItems, setTotalItems] = useState(0);
+  const supabase = useSupabase();
 
   useEffect(() => {
+    async function fetchUsers() {
+      const { data, count } = await supabase
+        .from("profiles")
+        .select("*", { count: "exact" })
+        .order("created_at", { ascending: false })
+        .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
+
+      setUsers(data || []);
+      setTotalItems(count || 0);
+      setLoading(false);
+    }
+
     fetchUsers();
-  }, []);
-
-  async function fetchUsers() {
-    const { data } = await supabase
-      .from("profiles")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    setUsers(data || []);
-    setLoading(false);
-  }
+  }, [page]);
 
   async function toggleBan(userId: string, currentBanned: boolean) {
     await supabase
@@ -45,15 +52,15 @@ export default function UsersPage() {
   });
 
   const roleColors: Record<string, string> = {
-    customer: "bg-sand/50 text-bark dark:bg-[#3A2E20] dark:text-cream/70",
-    seller: "bg-turmeric/20 text-amber-700",
-    creator: "bg-tomato/20 text-tomato",
+    customer: "bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-300",
+    seller: "bg-amber-500/20 text-amber-600",
+    creator: "bg-red-600/20 text-red-600",
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="h-8 w-8 border-3 border-tomato border-t-transparent rounded-full animate-spin" />
+        <div className="h-8 w-8 border-[3px] border-red-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -61,7 +68,7 @@ export default function UsersPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-espresso dark:text-cream">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
           Users
         </h1>
         <div className="flex gap-2">
@@ -71,8 +78,8 @@ export default function UsersPage() {
               onClick={() => setFilter(f)}
               className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
                 filter === f
-                  ? "bg-tomato text-white"
-                  : "bg-sand/50 text-bark hover:bg-sand dark:bg-[#3A2E20] dark:text-cream/70"
+                  ? "bg-red-600 text-white"
+                  : "bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300"
               }`}
             >
               {f.charAt(0).toUpperCase() + f.slice(1)}
@@ -81,24 +88,24 @@ export default function UsersPage() {
         </div>
       </div>
 
-      <div className="bg-surface dark:bg-surface-dark border border-sand dark:border-[#4A3D30] rounded-xl overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-sand dark:border-[#4A3D30]">
-                <th className="text-left px-5 py-3 font-medium text-bark dark:text-cream/60">
+              <tr className="border-b border-gray-200 dark:border-gray-700">
+                <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400">
                   User
                 </th>
-                <th className="text-left px-5 py-3 font-medium text-bark dark:text-cream/60">
+                <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400">
                   Role
                 </th>
-                <th className="text-left px-5 py-3 font-medium text-bark dark:text-cream/60">
+                <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400">
                   Status
                 </th>
-                <th className="text-left px-5 py-3 font-medium text-bark dark:text-cream/60">
+                <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400">
                   Joined
                 </th>
-                <th className="text-right px-5 py-3 font-medium text-bark dark:text-cream/60">
+                <th className="text-right px-5 py-3 font-medium text-gray-500 dark:text-gray-400">
                   Actions
                 </th>
               </tr>
@@ -108,7 +115,7 @@ export default function UsersPage() {
                 <tr>
                   <td
                     colSpan={5}
-                    className="px-5 py-10 text-center text-bark dark:text-cream/50"
+                    className="px-5 py-10 text-center text-gray-500 dark:text-gray-400"
                   >
                     No users found
                   </td>
@@ -117,18 +124,18 @@ export default function UsersPage() {
                 filtered.map((user) => (
                   <tr
                     key={user.id}
-                    className="border-b border-sand/50 dark:border-[#4A3D30]/50 last:border-0 hover:bg-sand/20 dark:hover:bg-[#3A2E20]/50 transition-colors"
+                    className="border-b border-gray-200/50 dark:border-gray-700/50 last:border-0 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors"
                   >
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-tomato/20 flex items-center justify-center text-tomato text-sm font-bold shrink-0">
+                        <div className="w-8 h-8 rounded-full bg-red-600/20 flex items-center justify-center text-red-600 text-sm font-bold shrink-0">
                           {user.full_name?.[0] || user.email[0].toUpperCase()}
                         </div>
                         <div className="min-w-0">
-                          <p className="font-medium text-espresso dark:text-cream truncate">
+                          <p className="font-medium text-gray-900 dark:text-white truncate">
                             {user.full_name || "N/A"}
                           </p>
-                          <p className="text-xs text-bark dark:text-cream/50 truncate">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                             {user.email}
                           </p>
                         </div>
@@ -147,8 +154,8 @@ export default function UsersPage() {
                       <span
                         className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
                           user.is_banned
-                            ? "bg-chili/20 text-chili"
-                            : "bg-herb/20 text-herb"
+                            ? "bg-red-600/20 text-red-600"
+                            : "bg-green-600/20 text-green-600"
                         }`}
                       >
                         {user.is_banned ? (
@@ -160,7 +167,7 @@ export default function UsersPage() {
                         )}
                       </span>
                     </td>
-                    <td className="px-5 py-3 text-bark dark:text-cream/50">
+                    <td className="px-5 py-3 text-gray-500 dark:text-gray-400">
                       {new Date(user.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-5 py-3 text-right">
@@ -169,8 +176,8 @@ export default function UsersPage() {
                           onClick={() => toggleBan(user.id, user.is_banned)}
                           className={`p-1.5 rounded-lg transition-colors ${
                             user.is_banned
-                              ? "bg-herb/10 text-herb hover:bg-herb/20"
-                              : "bg-chili/10 text-chili hover:bg-chili/20"
+                              ? "bg-green-600/10 text-green-600 hover:bg-green-600/20"
+                              : "bg-red-600/10 text-red-600 hover:bg-red-600/20"
                           }`}
                           title={user.is_banned ? "Unban" : "Ban"}
                         >
@@ -189,6 +196,8 @@ export default function UsersPage() {
           </table>
         </div>
       </div>
+
+      <Pagination page={page} totalPages={Math.ceil(totalItems / PAGE_SIZE)} onPageChange={setPage} />
     </div>
   );
 }

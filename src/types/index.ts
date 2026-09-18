@@ -19,6 +19,7 @@ export interface Store {
   description: string;
   photo_url: string | null;
   pickup_area: string;
+  food_type: string;
   is_open: boolean;
   is_approved: boolean;
   rating: number;

@@ -1,66 +1,26 @@
 "use client";
 
-import { createClient } from "@/lib/supabase/client";
+import { useSupabase } from "@/lib/supabase/use-client";
 import { useAuth } from "@/components/ui/auth-provider";
+import { useCart } from "@/components/cart/cart-provider";
+import { PickupTimePicker } from "@/components/cart/pickup-time-picker";
+import { QuantityStepper } from "@/components/ui/quantity-stepper";
+import { EmptyState } from "@/components/ui/empty-state";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { Trash2, Minus, Plus, ShoppingBag } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Trash2, ShoppingBag } from "lucide-react";
 import Link from "next/link";
-
-interface CartItemData {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-  store_id: string;
-  store_name: string;
-  notes: string;
-  photo_url: string | null;
-}
+import Image from "next/image";
+import { toast } from "@/components/ui/toast";
 
 export default function CartPage() {
   const { user } = useAuth();
   const router = useRouter();
-  const supabase = createClient();
-  const [cartItems, setCartItems] = useState<CartItemData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const supabase = useSupabase();
+  const { items: cartItems, setQuantity, remove, clear } = useCart();
   const [placing, setPlacing] = useState(false);
-
-  // For simplicity, cart is managed via localStorage
-  // In production, use a proper cart context/provider
-  useState(() => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("campus-cravings-cart");
-      if (stored) {
-        setCartItems(JSON.parse(stored));
-      }
-      setLoading(false);
-    }
-  });
-
-  function updateQuantity(id: string, delta: number) {
-    setCartItems((prev) => {
-      const updated = prev
-        .map((item) =>
-          item.id === id
-            ? { ...item, quantity: Math.max(1, item.quantity + delta) }
-            : item
-        )
-        .filter((item) => item.quantity > 0);
-      localStorage.setItem("campus-cravings-cart", JSON.stringify(updated));
-      return updated;
-    });
-  }
-
-  function removeItem(id: string) {
-    setCartItems((prev) => {
-      const updated = prev.filter((item) => item.id !== id);
-      localStorage.setItem("campus-cravings-cart", JSON.stringify(updated));
-      return updated;
-    });
-  }
-
-  const total = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  // Pickup time is per-store (since orders are placed per-store).
+  const [pickupTimes, setPickupTimes] = useState<Record<string, string>>({});
 
   // Group by store
   const groupedByStore = cartItems.reduce((acc, item) => {
@@ -69,7 +29,7 @@ export default function CartPage() {
     }
     acc[item.store_id].items.push(item);
     return acc;
-  }, {} as Record<string, { store_name: string; items: CartItemData[] }>);
+  }, {} as Record<string, { store_name: string; items: typeof cartItems }>);
 
   async function handlePlaceOrders() {
     if (!user || cartItems.length === 0) return;
@@ -83,7 +43,7 @@ export default function CartPage() {
       .in("status", ["requested", "accepted"]);
 
     if (count && count >= 3) {
-      alert("You have too many pending orders.");
+      toast("You have too many pending orders.", "error");
       setPlacing(false);
       return;
     }
@@ -94,6 +54,14 @@ export default function CartPage() {
         (sum, item) => sum + item.price * item.quantity,
         0
       );
+      const pickupIso = pickupTimes[storeId];
+      const pickupTimeDisplay = pickupIso
+        ? new Date(pickupIso).toLocaleString(undefined, {
+            weekday: "short",
+            hour: "numeric",
+            minute: "2-digit",
+          })
+        : "Flexible";
 
       const { data: order } = await supabase
         .from("orders")
@@ -101,8 +69,9 @@ export default function CartPage() {
           customer_id: user.id,
           store_id: storeId,
           total_price: totalPrice,
-          pickup_time: "Flexible",
-          notes: group.items.map((i) => i.notes).filter(Boolean).join("; ") || null,
+          pickup_time: pickupTimeDisplay,
+          notes:
+            group.items.map((i) => i.notes).filter(Boolean).join("; ") || null,
         })
         .select()
         .single();
@@ -128,129 +97,156 @@ export default function CartPage() {
           await supabase.from("notifications").insert({
             user_id: store.user_id,
             title: "New Order!",
-            message: `You have a new pre-order for ৳${totalPrice.toFixed(0)}`,
+            message: `You have a new pre-order for ৳${totalPrice.toFixed(0)} (pickup ${pickupTimeDisplay})`,
             link: "/seller/orders",
           });
         }
       }
     }
 
-    localStorage.removeItem("campus-cravings-cart");
-    setCartItems([]);
+    clear();
     setPlacing(false);
-    router.push("/orders");
+    router.push("/orders?just_placed=1");
   }
 
-  if (loading) {
-    return (
-      <div className="max-w-3xl mx-auto px-4 py-4">
-        <div className="animate-pulse space-y-3">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-20 bg-sand/30 dark:bg-[#3A2E20] rounded-xl" />
-          ))}
-        </div>
-      </div>
-    );
-  }
+  const total = cartItems.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  );
+  const allStoresHavePickup = Object.keys(groupedByStore).every(
+    (id) => pickupTimes[id]
+  );
 
   return (
     <div className="max-w-3xl mx-auto px-4 md:px-6 py-4">
-      <h1 className="text-xl font-bold text-espresso dark:text-cream mb-4">
-        Cart
-      </h1>
+      <h1 className="text-xl font-bold text-[var(--text)] mb-4">Your cart</h1>
 
       {cartItems.length === 0 ? (
-        <div className="text-center py-16">
-          <ShoppingBag size={48} className="mx-auto text-bark/30 mb-3" />
-          <p className="text-bark mb-4">Your cart is empty</p>
-          <Link
-            href="/feed"
-            className="inline-flex px-4 py-2 bg-tomato text-white rounded-xl text-sm font-semibold hover:bg-tomato-hover"
-          >
-            Browse Food
-          </Link>
-        </div>
+        <EmptyState
+          icon={ShoppingBag}
+          title="Your cart is empty"
+          message="Browse the feed and add some homemade meals to get started."
+          ctaLabel="Browse food"
+          ctaHref="/feed"
+        />
       ) : (
         <>
           {Object.entries(groupedByStore).map(([storeId, group]) => (
-            <div key={storeId} className="mb-6">
-              <h2 className="accent-line text-sm font-semibold text-espresso dark:text-cream mb-3">
-                {group.store_name}
-              </h2>
-              <div className="space-y-2">
+            <div
+              key={storeId}
+              className="mb-6 bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden"
+            >
+              <div className="px-4 pt-3 pb-2 border-b border-[var(--border)] bg-[var(--background)]">
+                <h2 className="text-sm font-semibold text-[var(--text)]">
+                  {group.store_name}
+                </h2>
+              </div>
+              <ul role="list" className="divide-y divide-[var(--border)]">
                 {group.items.map((item) => (
-                  <div
+                  <li
                     key={item.id}
-                    className="flex items-center gap-3 p-3 bg-surface dark:bg-surface-dark rounded-xl border border-sand dark:border-[#4A3D30]"
+                    className="flex items-center gap-3 p-3"
                   >
-                    <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-tomato/5 to-turmeric/5 flex items-center justify-center text-xl shrink-0">
+                    <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-[var(--primary-soft)] to-[var(--warning-soft)] flex items-center justify-center shrink-0 overflow-hidden">
                       {item.photo_url ? (
-                        <img
+                        <Image
                           src={item.photo_url}
                           alt={item.name}
-                          className="w-full h-full object-cover rounded-lg"
+                          width={56}
+                          height={56}
+                          className="w-full h-full object-cover"
                         />
                       ) : (
-                        "🍽️"
+                        <ShoppingBag size={20} className="text-[var(--text-subtle)]" aria-hidden="true" />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-espresso dark:text-cream truncate">
+                      <p className="text-sm font-medium text-[var(--text)] truncate">
                         {item.name}
                       </p>
-                      <p className="text-xs text-bark font-mono">
+                      <p className="text-xs text-[var(--text-muted)] font-mono">
                         ৳{item.price.toFixed(0)} each
                       </p>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => updateQuantity(item.id, -1)}
-                        className="w-7 h-7 rounded-md border border-sand dark:border-[#4A3D30] flex items-center justify-center text-bark"
-                      >
-                        <Minus size={12} />
-                      </button>
-                      <span className="w-6 text-center text-sm font-mono font-bold text-espresso dark:text-cream">
-                        {item.quantity}
-                      </span>
-                      <button
-                        onClick={() => updateQuantity(item.id, 1)}
-                        className="w-7 h-7 rounded-md border border-sand dark:border-[#4A3D30] flex items-center justify-center text-bark"
-                      >
-                        <Plus size={12} />
-                      </button>
-                    </div>
-                    <span className="text-sm font-bold font-mono text-tomato w-14 text-right">
+                    <QuantityStepper
+                      value={item.quantity}
+                      onChange={(q) => setQuantity(item.id, q)}
+                      min={1}
+                      max={20}
+                      label={`${item.name} quantity`}
+                      size="sm"
+                    />
+                    <span className="text-sm font-bold font-mono text-[var(--primary)] w-14 text-right">
                       ৳{(item.price * item.quantity).toFixed(0)}
                     </span>
                     <button
-                      onClick={() => removeItem(item.id)}
-                      className="p-1 text-bark hover:text-chili"
+                      type="button"
+                      onClick={() => remove(item.id)}
+                      aria-label={`Remove ${item.name} from cart`}
+                      className="p-1.5 text-[var(--text-muted)] hover:text-[var(--danger)] transition-colors motion-reduce:transition-none"
                     >
-                      <Trash2 size={14} />
+                      <Trash2 size={14} aria-hidden="true" />
                     </button>
-                  </div>
+                  </li>
                 ))}
+              </ul>
+
+              {/* Per-store pickup time */}
+              <div className="px-4 py-3 bg-[var(--background)] border-t border-[var(--border)]">
+                <PickupTimePicker
+                  value={pickupTimes[storeId] || ""}
+                  onChange={(iso) =>
+                    setPickupTimes((prev) => ({ ...prev, [storeId]: iso }))
+                  }
+                  id={`pickup-${storeId}`}
+                />
               </div>
             </div>
           ))}
 
-          {/* Total */}
-          <div className="bg-surface dark:bg-surface-dark rounded-xl border border-sand dark:border-[#4A3D30] p-4 mt-4">
+          {/* Total + CTA */}
+          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4 mt-4">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-sm text-bark">Total</span>
-              <span className="text-xl font-bold font-mono text-tomato">
+              <span className="text-sm text-[var(--text-muted)]">Total</span>
+              <span className="text-xl font-bold font-mono text-[var(--primary)]">
                 ৳{total.toFixed(0)}
               </span>
             </div>
+            {!allStoresHavePickup && (
+              <p
+                role="status"
+                className="text-xs text-[var(--text-muted)] mb-2"
+              >
+                Choose a pickup time for each store before placing your order.
+              </p>
+            )}
             <button
+              type="button"
               onClick={handlePlaceOrders}
-              disabled={placing}
-              className="w-full py-3 bg-tomato text-white rounded-xl font-semibold text-sm hover:bg-tomato-hover active:scale-[0.98] transition-all disabled:opacity-50"
+              disabled={placing || !allStoresHavePickup}
+              className="w-full py-3 bg-[var(--primary)] text-white rounded-xl font-semibold text-sm hover:bg-[var(--primary-hover)] active:scale-[0.98] transition-all motion-reduce:transition-none disabled:opacity-50"
             >
-              {placing ? "Placing Orders..." : `Place Order (${cartItems.length} items)`}
+              {placing
+                ? "Placing orders…"
+                : `Place order${cartItems.length > 1 ? "s" : ""} (${cartItems.length} ${cartItems.length === 1 ? "item" : "items"})`}
             </button>
+            <p className="mt-2 text-[11px] text-center text-[var(--text-subtle)]">
+              You&apos;ll pay in cash when you pick up. No commissions, no
+              upfront fees.
+            </p>
           </div>
         </>
+      )}
+
+      {cartItems.length > 0 && (
+        <p className="mt-6 text-center text-xs">
+          <Link
+            href="/feed"
+            className="text-[var(--primary)] hover:underline"
+          >
+            Keep browsing →
+          </Link>
+        </p>
       )}
     </div>
   );

@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+
+import { useSupabase } from "@/lib/supabase/use-client";
 import { Eye, EyeOff } from "lucide-react";
+import { Pagination } from "@/components/ui/pagination";
 
 interface ListingWithStore {
   id: string;
@@ -25,21 +27,26 @@ export default function ListingsPage() {
   const [listings, setListings] = useState<ListingWithStore[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "visible" | "hidden">("all");
-  const supabase = createClient();
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 20;
+  const [totalItems, setTotalItems] = useState(0);
+  const supabase = useSupabase();
 
   useEffect(() => {
+    async function fetchListings() {
+      const { data, count } = await supabase
+        .from("food_items")
+        .select("*, store:stores(name)", { count: "exact" })
+        .order("created_at", { ascending: false })
+        .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
+
+      setListings((data as ListingWithStore[]) || []);
+      setTotalItems(count || 0);
+      setLoading(false);
+    }
+
     fetchListings();
-  }, []);
-
-  async function fetchListings() {
-    const { data } = await supabase
-      .from("food_items")
-      .select("*, store:stores(name)")
-      .order("created_at", { ascending: false });
-
-    setListings((data as ListingWithStore[]) || []);
-    setLoading(false);
-  }
+  }, [page]);
 
   async function toggleHidden(itemId: string, currentStatus: boolean) {
     await supabase
@@ -63,7 +70,7 @@ export default function ListingsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="h-8 w-8 border-3 border-tomato border-t-transparent rounded-full animate-spin" />
+        <div className="h-8 w-8 border-[3px] border-red-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -71,7 +78,7 @@ export default function ListingsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-espresso dark:text-cream">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
           Listings
         </h1>
         <div className="flex gap-2">
@@ -81,8 +88,8 @@ export default function ListingsPage() {
               onClick={() => setFilter(f)}
               className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
                 filter === f
-                  ? "bg-tomato text-white"
-                  : "bg-sand/50 text-bark hover:bg-sand dark:bg-[#3A2E20] dark:text-cream/70"
+                  ? "bg-red-600 text-white"
+                  : "bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300"
               }`}
             >
               {f.charAt(0).toUpperCase() + f.slice(1)}
@@ -91,27 +98,27 @@ export default function ListingsPage() {
         </div>
       </div>
 
-      <div className="bg-surface dark:bg-surface-dark border border-sand dark:border-[#4A3D30] rounded-xl overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-sand dark:border-[#4A3D30]">
-                <th className="text-left px-5 py-3 font-medium text-bark dark:text-cream/60">
+              <tr className="border-b border-gray-200 dark:border-gray-700">
+                <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400">
                   Item
                 </th>
-                <th className="text-left px-5 py-3 font-medium text-bark dark:text-cream/60">
+                <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400">
                   Store
                 </th>
-                <th className="text-left px-5 py-3 font-medium text-bark dark:text-cream/60">
+                <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400">
                   Price
                 </th>
-                <th className="text-left px-5 py-3 font-medium text-bark dark:text-cream/60">
+                <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400">
                   Qty
                 </th>
-                <th className="text-left px-5 py-3 font-medium text-bark dark:text-cream/60">
+                <th className="text-left px-5 py-3 font-medium text-gray-500 dark:text-gray-400">
                   Status
                 </th>
-                <th className="text-right px-5 py-3 font-medium text-bark dark:text-cream/60">
+                <th className="text-right px-5 py-3 font-medium text-gray-500 dark:text-gray-400">
                   Actions
                 </th>
               </tr>
@@ -121,7 +128,7 @@ export default function ListingsPage() {
                 <tr>
                   <td
                     colSpan={6}
-                    className="px-5 py-10 text-center text-bark dark:text-cream/50"
+                    className="px-5 py-10 text-center text-gray-500 dark:text-gray-400"
                   >
                     No listings found
                   </td>
@@ -130,30 +137,30 @@ export default function ListingsPage() {
                 filtered.map((listing) => (
                   <tr
                     key={listing.id}
-                    className="border-b border-sand/50 dark:border-[#4A3D30]/50 last:border-0 hover:bg-sand/20 dark:hover:bg-[#3A2E20]/50 transition-colors"
+                    className="border-b border-gray-200/50 dark:border-gray-700/50 last:border-0 hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors"
                   >
                     <td className="px-5 py-3">
-                      <p className="font-medium text-espresso dark:text-cream">
+                      <p className="font-medium text-gray-900 dark:text-white">
                         {listing.name}
                       </p>
                     </td>
-                    <td className="px-5 py-3 text-bark dark:text-cream/60">
+                    <td className="px-5 py-3 text-gray-500 dark:text-gray-400">
                       {listing.store?.name || "N/A"}
                     </td>
                     <td className="px-5 py-3">
-                      <span className="price-tag text-espresso dark:text-cream">
+                      <span className="price-tag text-gray-900 dark:text-white">
                         ৳{listing.price}
                       </span>
                     </td>
-                    <td className="px-5 py-3 text-espresso dark:text-cream">
+                    <td className="px-5 py-3 text-gray-900 dark:text-white">
                       {listing.quantity}
                     </td>
                     <td className="px-5 py-3">
                       <span
                         className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
                           listing.is_sold_out
-                            ? "bg-chili/20 text-chili"
-                            : "bg-herb/20 text-herb"
+                            ? "bg-red-600/20 text-red-600"
+                            : "bg-green-600/20 text-green-600"
                         }`}
                       >
                         {listing.is_sold_out ? "Hidden" : "Visible"}
@@ -166,8 +173,8 @@ export default function ListingsPage() {
                         }
                         className={`p-1.5 rounded-lg transition-colors ${
                           listing.is_sold_out
-                            ? "bg-herb/10 text-herb hover:bg-herb/20"
-                            : "bg-chili/10 text-chili hover:bg-chili/20"
+                            ? "bg-green-600/10 text-green-600 hover:bg-green-600/20"
+                            : "bg-red-600/10 text-red-600 hover:bg-red-600/20"
                         }`}
                         title={listing.is_sold_out ? "Unhide" : "Hide"}
                       >
@@ -185,6 +192,8 @@ export default function ListingsPage() {
           </table>
         </div>
       </div>
+
+      <Pagination page={page} totalPages={Math.ceil(totalItems / PAGE_SIZE)} onPageChange={setPage} />
     </div>
   );
 }

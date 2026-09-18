@@ -12,20 +12,13 @@ export async function GET(request: Request) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error && data.user) {
-      // Validate BRACU domain server-side
+      // Validate BRACU domain server-side — strict
       const email = data.user.email;
-      if (!email || !email.endsWith(`@${BRACU_DOMAIN}`)) {
+      if (!email || email.split("@")[1] !== BRACU_DOMAIN) {
         await supabase.auth.signOut();
         return NextResponse.redirect(
           `${origin}?error=Only+BRAC+University+students+(@${BRACU_DOMAIN})+are+allowed+to+sign+in.`
         );
-      }
-
-      // Also check the hd claim from the ID token if available
-      const app_metadata = data.user.app_metadata;
-      if (app_metadata && app_metadata.provider === "google") {
-        // The hd field should match our domain
-        // This is checked via Google's hd parameter in the OAuth URL
       }
 
       // Check if profile exists, create if not

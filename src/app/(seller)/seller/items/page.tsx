@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+
+import { useSupabase } from "@/lib/supabase/use-client";
 import { useAuth } from "@/components/ui/auth-provider";
 import { FoodItem, Store } from "@/types";
 import { clsx } from "clsx";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Plus,
   Pencil,
@@ -13,15 +15,18 @@ import {
   Eye,
   EyeOff,
   Package,
+  Utensils,
 } from "lucide-react";
+import { ConfirmModal } from "@/components/ui/confirm-modal";
 
 export default function SellerItemsPage() {
   const { profile } = useAuth();
-  const supabase = createClient();
+  const supabase = useSupabase();
   const [store, setStore] = useState<Store | null>(null);
   const [items, setItems] = useState<FoodItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   useEffect(() => {
     if (!profile) return;
@@ -96,13 +101,13 @@ export default function SellerItemsPage() {
   if (!store) {
     return (
       <div className="max-w-3xl mx-auto px-4 md:px-6 py-16 text-center">
-        <Package size={48} className="mx-auto mb-4 text-bark/30" />
-        <p className="text-sm text-bark mb-4">
+        <Package size={48} className="mx-auto mb-4 text-gray-300" />
+        <p className="text-sm text-gray-500 mb-4">
           Set up your store first to manage items.
         </p>
         <Link
           href="/seller/storefront"
-          className="inline-flex px-4 py-2 bg-tomato text-white rounded-full text-sm font-semibold"
+          className="inline-flex px-4 py-2 bg-red-600 text-white rounded-full text-sm font-semibold"
         >
           Set Up Store
         </Link>
@@ -113,12 +118,12 @@ export default function SellerItemsPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 md:px-6 py-4">
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-bold text-espresso dark:text-cream">
+        <h1 className="text-xl font-bold text-gray-900">
           Items
         </h1>
         <Link
           href="/seller/new-item"
-          className="flex items-center gap-1.5 px-4 py-2 bg-tomato text-white rounded-full text-xs font-semibold hover:bg-tomato-hover transition-colors"
+          className="flex items-center gap-1.5 px-4 py-2 bg-red-600 text-white rounded-full text-xs font-semibold hover:bg-red-700 transition-colors"
         >
           <Plus size={14} />
           New Item
@@ -130,7 +135,7 @@ export default function SellerItemsPage() {
           {[...Array(3)].map((_, i) => (
             <div
               key={i}
-              className="h-20 bg-sand/30 dark:bg-[#3A2E20] rounded-xl animate-pulse"
+              className="h-20 bg-gray-200 rounded-xl animate-pulse"
             />
           ))}
         </div>
@@ -140,40 +145,42 @@ export default function SellerItemsPage() {
             <div
               key={item.id}
               className={clsx(
-                "flex items-center gap-3 p-3 bg-surface dark:bg-surface-dark rounded-xl border border-sand dark:border-[#4A3D30] transition-opacity",
+                "flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-200 transition-opacity",
                 item.is_sold_out && "opacity-60"
               )}
             >
-              <div className="w-14 h-14 shrink-0 rounded-lg overflow-hidden bg-sand/30 dark:bg-[#3A2E20]">
+              <div className="w-14 h-14 shrink-0 rounded-lg overflow-hidden bg-gray-100">
                 {item.photo_urls?.[0] ? (
-                  <img
+                  <Image
                     src={item.photo_urls[0]}
                     alt={item.name}
+                    width={56}
+                    height={56}
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-lg">
-                    🍽️
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Utensils size={20} className="text-gray-400" />
                   </div>
                 )}
               </div>
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium text-espresso dark:text-cream truncate">
+                  <p className="text-sm font-medium text-gray-900 truncate">
                     {item.name}
                   </p>
                   {item.is_sold_out && (
-                    <span className="px-1.5 py-0.5 bg-chili/10 text-chili text-[10px] font-semibold rounded-full uppercase">
+                    <span className="px-1.5 py-0.5 bg-red-100 text-red-600 text-[10px] font-semibold rounded-full uppercase">
                       Sold Out
                     </span>
                   )}
                 </div>
                 <div className="flex items-center gap-3 mt-0.5">
-                  <span className="price-tag text-xs font-mono text-tomato font-bold">
+                  <span className="price-tag text-xs font-mono text-red-600 font-bold">
                     ৳{item.price.toFixed(0)}
                   </span>
-                  <span className="text-xs text-bark">
+                  <span className="text-xs text-gray-500">
                     Qty: {item.quantity}
                   </span>
                 </div>
@@ -185,8 +192,8 @@ export default function SellerItemsPage() {
                   className={clsx(
                     "p-2 rounded-lg transition-colors",
                     item.is_sold_out
-                      ? "text-herb hover:bg-herb/10"
-                      : "text-bark hover:bg-sand/50 dark:hover:bg-[#3A2E20]"
+                      ? "text-green-600 hover:bg-green-50"
+                      : "text-gray-500 hover:bg-gray-100"
                   )}
                   title={item.is_sold_out ? "Mark available" : "Mark sold out"}
                 >
@@ -198,19 +205,19 @@ export default function SellerItemsPage() {
                 </button>
                 <Link
                   href={`/seller/edit/${item.id}`}
-                  className="p-2 rounded-lg text-bark hover:bg-sand/50 dark:hover:bg-[#3A2E20] transition-colors"
+                  className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
                   title="Edit item"
                 >
                   <Pencil size={16} />
                 </Link>
                 <button
-                  onClick={() => deleteItem(item.id)}
+                  onClick={() => setDeleteTarget(item.id)}
                   disabled={deletingId === item.id}
-                  className="p-2 rounded-lg text-chili hover:bg-chili/10 transition-colors disabled:opacity-50"
+                  className="p-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
                   title="Delete item"
                 >
                   {deletingId === item.id ? (
-                    <div className="h-4 w-4 border-2 border-chili border-t-transparent rounded-full animate-spin" />
+                    <div className="h-4 w-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
                   ) : (
                     <Trash2 size={16} />
                   )}
@@ -221,17 +228,29 @@ export default function SellerItemsPage() {
         </div>
       ) : (
         <div className="text-center py-16">
-          <Package size={32} className="mx-auto mb-3 text-bark/30" />
-          <p className="text-sm text-bark mb-3">No items yet</p>
+          <Package size={32} className="mx-auto mb-3 text-gray-300" />
+          <p className="text-sm text-gray-500 mb-3">No items yet</p>
           <Link
             href="/seller/new-item"
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-tomato text-white rounded-full text-sm font-semibold"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-red-600 text-white rounded-full text-sm font-semibold"
           >
             <Plus size={14} />
             Create Your First Item
           </Link>
         </div>
       )}
+      <ConfirmModal
+        open={deleteTarget !== null}
+        title="Delete Item"
+        message="Are you sure you want to delete this item? This action cannot be undone."
+        confirmLabel="Delete"
+        danger
+        onConfirm={() => {
+          if (deleteTarget) deleteItem(deleteTarget);
+          setDeleteTarget(null);
+        }}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

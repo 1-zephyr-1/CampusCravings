@@ -28,11 +28,11 @@ export function CreatorSidebar() {
   const { profile } = useAuth();
 
   return (
-    <aside className="hidden md:flex flex-col w-60 bg-surface border-r border-sand dark:bg-surface-dark dark:border-[#4A3D30] min-h-screen sticky top-0">
-      <div className="p-6 border-b border-sand dark:border-[#4A3D30]">
+    <aside className="hidden md:flex flex-col w-60 bg-white border-r border-gray-200 dark:bg-gray-900 dark:border-gray-800 min-h-screen sticky top-0">
+      <div className="p-6 border-b border-gray-200 dark:border-gray-800">
         <Link href="/creator" className="flex items-center gap-2">
-          <Shield size={22} className="text-tomato" />
-          <span className="text-lg font-bold text-espresso dark:text-cream">
+          <Shield size={22} className="text-red-600" />
+          <span className="text-lg font-bold text-gray-900 dark:text-white">
             Creator Panel
           </span>
         </Link>
@@ -48,10 +48,10 @@ export function CreatorSidebar() {
               key={item.href}
               href={item.href}
               className={clsx(
-                "flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all text-sm font-medium",
+                "flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all text-sm font-medium border-l-[3px]",
                 isActive
-                  ? "bg-tomato/10 text-tomato accent-line"
-                  : "text-bark hover:bg-sand/50 dark:hover:bg-[#3A2E20] dark:text-cream/70"
+                  ? "bg-red-50 text-red-600 border-red-600"
+                  : "text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-400 border-transparent"
               )}
             >
               <item.icon size={18} strokeWidth={1.75} />
@@ -61,23 +61,23 @@ export function CreatorSidebar() {
         })}
       </nav>
 
-      <div className="p-4 border-t border-sand dark:border-[#4A3D30]">
+      <div className="p-4 border-t border-gray-200 dark:border-gray-800">
         <Link
           href="/feed"
-          className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-bark hover:bg-sand/50 dark:hover:bg-[#3A2E20] dark:text-cream/70 transition-colors"
+          className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 dark:text-gray-400 transition-colors"
         >
           ← Back to Feed
         </Link>
         {profile && (
           <div className="flex items-center gap-3 px-4 py-2 mt-2">
-            <div className="w-8 h-8 rounded-full bg-tomato/20 flex items-center justify-center text-tomato text-sm font-bold">
+            <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-600 text-sm font-bold">
               {profile.full_name?.[0] || profile.email[0].toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-espresso dark:text-cream truncate">
+              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                 {profile.full_name || "Creator"}
               </p>
-              <p className="text-xs text-bark truncate">{profile.email}</p>
+              <p className="text-xs text-gray-500 truncate">{profile.email}</p>
             </div>
           </div>
         )}

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { createClient } from "@/lib/supabase/client";
+
+import { useSupabase } from "@/lib/supabase/use-client";
 import { useAuth } from "@/components/ui/auth-provider";
 import { useRouter } from "next/navigation";
 import { Category, Store } from "@/types";
@@ -9,10 +10,11 @@ import { DIETARY_TAGS, SPICE_LEVELS, MAX_PHOTOS_PER_ITEM, MAX_UPLOAD_SIZE, ALLOW
 import { clsx } from "clsx";
 import { Upload, X, ArrowLeft, Plus } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function NewItemPage() {
   const { profile } = useAuth();
-  const supabase = createClient();
+  const supabase = useSupabase();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -180,12 +182,12 @@ export default function NewItemPage() {
   if (!store) {
     return (
       <div className="max-w-2xl mx-auto px-4 md:px-6 py-16 text-center">
-        <p className="text-sm text-bark">
+        <p className="text-sm text-gray-500">
           You need a store to create items.
         </p>
         <Link
           href="/seller/storefront"
-          className="inline-flex mt-3 px-4 py-2 bg-tomato text-white rounded-full text-sm font-semibold"
+          className="inline-flex mt-3 px-4 py-2 bg-red-600 text-white rounded-full text-sm font-semibold"
         >
           Set Up Store
         </Link>
@@ -198,19 +200,19 @@ export default function NewItemPage() {
       <div className="flex items-center gap-3 mb-4">
         <Link
           href="/seller/items"
-          className="p-2 rounded-lg text-bark hover:bg-sand/50 dark:hover:bg-[#3A2E20] transition-colors"
+          className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
         >
           <ArrowLeft size={18} />
         </Link>
-        <h1 className="text-xl font-bold text-espresso dark:text-cream">
+        <h1 className="text-xl font-bold text-gray-900">
           New Item
         </h1>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="p-4 bg-surface dark:bg-surface-dark rounded-xl border border-sand dark:border-[#4A3D30] space-y-4">
+        <div className="p-4 bg-white rounded-xl border border-gray-200 space-y-4">
           <div>
-            <label className="block text-xs font-medium text-bark mb-1.5">
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">
               Name *
             </label>
             <input
@@ -220,12 +222,12 @@ export default function NewItemPage() {
                 setForm((prev) => ({ ...prev, name: e.target.value }))
               }
               placeholder="e.g. Chicken Biryani"
-              className="w-full px-3 py-2.5 bg-cream dark:bg-cream-dark border border-sand dark:border-[#4A3D30] rounded-xl text-sm text-espresso dark:text-cream placeholder:text-bark/50 focus:outline-none focus:ring-2 focus:ring-tomato/30 focus:border-tomato"
+              className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-red-600"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-bark mb-1.5">
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">
               Description
             </label>
             <textarea
@@ -235,13 +237,13 @@ export default function NewItemPage() {
               }
               placeholder="What makes your dish special?"
               rows={3}
-              className="w-full px-3 py-2.5 bg-cream dark:bg-cream-dark border border-sand dark:border-[#4A3D30] rounded-xl text-sm text-espresso dark:text-cream placeholder:text-bark/50 focus:outline-none focus:ring-2 focus:ring-tomato/30 focus:border-tomato resize-none"
+              className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-red-600 resize-none"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-bark mb-1.5">
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">
                 Price (৳) *
               </label>
               <input
@@ -252,11 +254,11 @@ export default function NewItemPage() {
                   setForm((prev) => ({ ...prev, price: e.target.value }))
                 }
                 placeholder="0"
-                className="w-full px-3 py-2.5 bg-cream dark:bg-cream-dark border border-sand dark:border-[#4A3D30] rounded-xl text-sm text-espresso dark:text-cream font-mono placeholder:text-bark/50 focus:outline-none focus:ring-2 focus:ring-tomato/30 focus:border-tomato"
+                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 font-mono placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-red-600"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-bark mb-1.5">
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">
                 Quantity *
               </label>
               <input
@@ -267,13 +269,13 @@ export default function NewItemPage() {
                   setForm((prev) => ({ ...prev, quantity: e.target.value }))
                 }
                 placeholder="0"
-                className="w-full px-3 py-2.5 bg-cream dark:bg-cream-dark border border-sand dark:border-[#4A3D30] rounded-xl text-sm text-espresso dark:text-cream font-mono placeholder:text-bark/50 focus:outline-none focus:ring-2 focus:ring-tomato/30 focus:border-tomato"
+                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 font-mono placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-red-600"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-bark mb-1.5">
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">
               Ordering Window
             </label>
             <input
@@ -286,13 +288,13 @@ export default function NewItemPage() {
                 }))
               }
               placeholder="e.g. 12pm - 3pm"
-              className="w-full px-3 py-2.5 bg-cream dark:bg-cream-dark border border-sand dark:border-[#4A3D30] rounded-xl text-sm text-espresso dark:text-cream placeholder:text-bark/50 focus:outline-none focus:ring-2 focus:ring-tomato/30 focus:border-tomato"
+              className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-red-600"
             />
           </div>
         </div>
 
-        <div className="p-4 bg-surface dark:bg-surface-dark rounded-xl border border-sand dark:border-[#4A3D30]">
-          <label className="block text-xs font-medium text-bark mb-2">
+        <div className="p-4 bg-white rounded-xl border border-gray-200">
+          <label className="block text-xs font-medium text-gray-500 mb-2">
             Spice Level
           </label>
           <div className="flex gap-2">
@@ -306,8 +308,8 @@ export default function NewItemPage() {
                 className={clsx(
                   "flex-1 py-2 rounded-xl text-xs font-medium border transition-colors",
                   form.spice_level === level.value
-                    ? "bg-tomato text-white border-tomato"
-                    : "bg-cream dark:bg-cream-dark border-sand dark:border-[#4A3D30] text-bark hover:border-tomato/50"
+                    ? "bg-red-600 text-white border-red-600"
+                    : "bg-gray-50 border-gray-200 text-gray-500 hover:border-red-300"
                 )}
               >
                 {level.label}
@@ -316,8 +318,8 @@ export default function NewItemPage() {
           </div>
         </div>
 
-        <div className="p-4 bg-surface dark:bg-surface-dark rounded-xl border border-sand dark:border-[#4A3D30]">
-          <label className="block text-xs font-medium text-bark mb-2">
+        <div className="p-4 bg-white rounded-xl border border-gray-200">
+          <label className="block text-xs font-medium text-gray-500 mb-2">
             Dietary Tags
           </label>
           <div className="flex flex-wrap gap-2">
@@ -329,8 +331,8 @@ export default function NewItemPage() {
                 className={clsx(
                   "px-3 py-1.5 rounded-full text-xs font-medium border transition-colors",
                   form.dietary_tags.includes(tag)
-                    ? "bg-tomato text-white border-tomato"
-                    : "bg-cream dark:bg-cream-dark border-sand dark:border-[#4A3D30] text-bark hover:border-tomato/50"
+                    ? "bg-red-600 text-white border-red-600"
+                    : "bg-gray-50 border-gray-200 text-gray-500 hover:border-red-300"
                 )}
               >
                 {tag}
@@ -339,8 +341,8 @@ export default function NewItemPage() {
           </div>
         </div>
 
-        <div className="p-4 bg-surface dark:bg-surface-dark rounded-xl border border-sand dark:border-[#4A3D30]">
-          <label className="block text-xs font-medium text-bark mb-2">
+        <div className="p-4 bg-white rounded-xl border border-gray-200">
+          <label className="block text-xs font-medium text-gray-500 mb-2">
             Categories
           </label>
           <div className="flex flex-wrap gap-2">
@@ -352,8 +354,8 @@ export default function NewItemPage() {
                 className={clsx(
                   "px-3 py-1.5 rounded-full text-xs font-medium border transition-colors",
                   selectedCategories.includes(cat.id)
-                    ? "bg-tomato text-white border-tomato"
-                    : "bg-cream dark:bg-cream-dark border-sand dark:border-[#4A3D30] text-bark hover:border-tomato/50"
+                    ? "bg-red-600 text-white border-red-600"
+                    : "bg-gray-50 border-gray-200 text-gray-500 hover:border-red-300"
                 )}
               >
                 {cat.icon} {cat.name}
@@ -362,8 +364,8 @@ export default function NewItemPage() {
           </div>
         </div>
 
-        <div className="p-4 bg-surface dark:bg-surface-dark rounded-xl border border-sand dark:border-[#4A3D30]">
-          <label className="block text-xs font-medium text-bark mb-2">
+        <div className="p-4 bg-white rounded-xl border border-gray-200">
+          <label className="block text-xs font-medium text-gray-500 mb-2">
             Photos ({files.length}/{MAX_PHOTOS_PER_ITEM})
           </label>
 
@@ -371,15 +373,17 @@ export default function NewItemPage() {
             <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
               {previews.map((src, i) => (
                 <div key={i} className="relative shrink-0">
-                  <img
+                  <Image
                     src={src}
                     alt={`Preview ${i + 1}`}
-                    className="w-20 h-20 object-cover rounded-xl border border-sand dark:border-[#4A3D30]"
+                    width={80}
+                    height={80}
+                    className="w-20 h-20 object-cover rounded-xl border border-gray-200"
                   />
                   <button
                     type="button"
                     onClick={() => removePhoto(i)}
-                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-chili text-white rounded-full flex items-center justify-center"
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-600 text-white rounded-full flex items-center justify-center"
                   >
                     <X size={10} />
                   </button>
@@ -392,7 +396,7 @@ export default function NewItemPage() {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="w-full flex items-center justify-center gap-2 py-6 border-2 border-dashed border-sand dark:border-[#4A3D30] rounded-xl text-bark hover:border-tomato/50 hover:text-tomato transition-colors"
+              className="w-full flex items-center justify-center gap-2 py-6 border-2 border-dashed border-gray-200 rounded-xl text-gray-500 hover:border-red-300 hover:text-red-600 transition-colors"
             >
               <Upload size={18} />
               <span className="text-xs font-medium">
@@ -412,7 +416,7 @@ export default function NewItemPage() {
         </div>
 
         {error && (
-          <p className="text-xs text-chili font-medium text-center">
+          <p className="text-xs text-red-600 font-medium text-center">
             {error}
           </p>
         )}
@@ -420,7 +424,7 @@ export default function NewItemPage() {
         <button
           type="submit"
           disabled={uploading}
-          className="w-full py-3 bg-tomato text-white rounded-full text-sm font-semibold hover:bg-tomato-hover transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+          className="w-full py-3 bg-red-600 text-white rounded-full text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
         >
           {uploading ? (
             <>

@@ -17,6 +17,7 @@ export function BottomNav() {
     { href: "/profile", label: "Profile", icon: User },
   ];
 
+  // Insert Seller tab for users who are actually sellers.
   if (profile?.role === "seller" || profile?.role === "creator") {
     navItems.splice(2, 0, {
       href: "/seller/dashboard",
@@ -25,6 +26,7 @@ export function BottomNav() {
     });
   }
 
+  // Insert Admin tab — only for creator role.
   if (profile?.role === "creator") {
     navItems.splice(navItems.length - 1, 0, {
       href: "/creator",
@@ -34,8 +36,11 @@ export function BottomNav() {
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-surface border-t border-sand dark:bg-surface-dark dark:border-[#4A3D30] md:hidden">
-      <div className="flex items-center justify-around h-16 px-2">
+    <nav
+      aria-label="Primary"
+      className="fixed bottom-0 left-0 right-0 z-50 bg-[var(--surface)] border-t border-[var(--border)] md:hidden pb-[env(safe-area-inset-bottom,0)]"
+    >
+      <div className="flex items-stretch justify-around h-16 px-1">
         {navItems.map((item) => {
           const isActive =
             item.href === "/feed"
@@ -45,20 +50,23 @@ export function BottomNav() {
             <Link
               key={item.href}
               href={item.href}
+              aria-current={isActive ? "page" : undefined}
               className={clsx(
-                "flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-colors min-w-[56px]",
+                "flex flex-col items-center justify-center gap-0.5 flex-1 min-w-[64px] py-1.5 rounded-lg transition-colors",
+                "motion-reduce:transition-none",
                 isActive
-                  ? "text-tomato"
-                  : "text-bark hover:text-espresso dark:hover:text-cream"
+                  ? "text-[var(--primary)]"
+                  : "text-[var(--text-muted)] hover:text-[var(--text)]"
               )}
             >
               <item.icon
-                size={20}
+                size={22}
                 strokeWidth={isActive ? 2.25 : 1.75}
+                aria-hidden="true"
               />
               <span
                 className={clsx(
-                  "text-[10px] font-medium",
+                  "text-xs font-medium",
                   isActive && "font-semibold"
                 )}
               >
