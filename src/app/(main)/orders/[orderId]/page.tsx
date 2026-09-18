@@ -46,8 +46,14 @@ export default function OrderDetailPage() {
   const [showJustPlaced, setShowJustPlaced] = useState(justPlaced);
   // Dispute form state.
   const [disputeOpen, setDisputeOpen] = useState(false);
+  const [disputeCategory, setDisputeCategory] = useState<
+    "not_received" | "quality" | "missing_items" | "seller_unresponsive" | "other"
+  >("other");
   const [disputeReason, setDisputeReason] = useState("");
   const [disputeSubmitting, setDisputeSubmitting] = useState(false);
+  // True once we've confirmed a dispute row exists for this order (hides the
+  // Report issue button so buyers don't double-file).
+  const [hasDispute, setHasDispute] = useState(false);
   // Reorder in-flight state for button label.
   const [reordering, setReordering] = useState(false);
 
@@ -69,6 +75,16 @@ export default function OrderDetailPage() {
           .single();
         setExistingReview(review);
       }
+
+      // Check whether a dispute already exists for this order. The RLS
+      // policy lets both parties read it; we use this to hide the Report
+      // issue button once one has been filed.
+      const { data: existingDispute } = await supabase
+        .from("disputes")
+        .select("id")
+        .eq("order_id", orderId)
+        .maybeSingle();
+      setHasDispute(Boolean(existingDispute));
 
       setLoading(false);
     }
@@ -141,41 +157,52 @@ export default function OrderDetailPage() {
   async function handleSubmitDispute() {
     if (!user || !order) return;
     const description = disputeReason.trim();
-    if (description.length < 4) {
-      toast("Add a short description of the issue.", "error");
+    if (description.length < 10) {
+      toast("Please describe the issue in at least 10 characters.", "error");
       return;
     }
+    // `against` is the other party on the order. If the buyer is filing,
+    // that's the seller (the user_id of the store). If somehow a seller
+    // filed, that'd be the buyer — supported but unusual.
+    const sellerId = (order.store as { user_id?: string } | undefined)
+      ?.user_id;
+    const buyerId = order.customer_id;
+    const against = user.id === buyerId ? sellerId : buyerId;
+    if (!against) {
+      toast("Couldn't determine the other party on this order.", "error");
+      return;
+    }
+
     setDisputeSubmitting(true);
-    // Try to create a disputes row. The `disputes` table may or may not exist
-    // — we check the error code and surface a friendly "coming soon" toast
-    // when the schema isn't there yet.
     const { error } = await supabase.from("disputes").insert({
       order_id: order.id,
-      user_id: user.id,
-      store_id: order.store_id,
-      reason: "order_issue",
-      description,
-      status: "pending",
+      filed_by: user.id,
+      against,
+      category: disputeCategory,
+      reason: description,
     });
     setDisputeSubmitting(false);
 
-    if (!error) {
-      toast("Issue reported — we'll follow up soon.", "success");
-      setDisputeOpen(false);
-      setDisputeReason("");
+    if (error) {
+      const code = (error as { code?: string }).code;
+      if (code === "42P01" || /does not exist/i.test(error.message)) {
+        toast(
+          "Issue reporting coming soon. Thanks for flagging this.",
+          "info",
+        );
+      } else {
+        toast("Couldn't send your report. Please try again.", "error");
+      }
       return;
     }
 
-    // Postgres undefined_table / 42P01 means the table doesn't exist yet.
-    // Any other error (RLS, network) gets a generic message.
-    const code = (error as { code?: string }).code;
-    if (code === "42P01" || /does not exist/i.test(error.message)) {
-      toast("Issue reporting coming soon. Thanks for flagging this.", "info");
-    } else {
-      toast("Couldn't send your report. Please try again.", "error");
-    }
+    toast("Dispute filed — we'll be in touch within 24 hours", "success");
+    setHasDispute(true);
     setDisputeOpen(false);
     setDisputeReason("");
+    setDisputeCategory("other");
+    // Refresh so the seller-side data (e.g. order timeline) is consistent.
+    router.refresh();
   }
 
   async function submitReview() {
@@ -536,7 +563,7 @@ export default function OrderDetailPage() {
               <RotateCcw size={12} aria-hidden="true" />
               {reordering ? "Adding…" : "Reorder"}
             </button>
-            {isOlderThan24h && (
+            {isOlderThan24h && !hasDispute && (
               <button
                 type="button"
                 onClick={() => setDisputeOpen(true)}
@@ -545,6 +572,12 @@ export default function OrderDetailPage() {
                 <Flag size={12} aria-hidden="true" />
                 Report issue
               </button>
+            )}
+            {hasDispute && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-[var(--border)] text-[var(--text-muted)] text-xs font-medium rounded-lg">
+                <Flag size={12} aria-hidden="true" />
+                Dispute filed
+              </span>
             )}
           </div>
         )}
@@ -669,6 +702,35 @@ export default function OrderDetailPage() {
               Tell us what went wrong with order #{order.id.slice(0, 8)}. We&apos;ll
               follow up with the seller.
             </p>
+            <label
+              htmlFor="dispute-category"
+              className="block text-xs font-medium text-[var(--text-muted)] mb-1"
+            >
+              Category
+            </label>
+            <select
+              id="dispute-category"
+              value={disputeCategory}
+              onChange={(e) =>
+                setDisputeCategory(
+                  e.target.value as
+                    | "not_received"
+                    | "quality"
+                    | "missing_items"
+                    | "seller_unresponsive"
+                    | "other",
+                )
+              }
+              className="w-full px-3 py-2 bg-[var(--background)] border border-[var(--border)] rounded-lg text-sm text-[var(--text)] mb-3 focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)]"
+            >
+              <option value="not_received">Item not received</option>
+              <option value="quality">Quality issue</option>
+              <option value="missing_items">Missing items</option>
+              <option value="seller_unresponsive">
+                Seller unresponsive
+              </option>
+              <option value="other">Other</option>
+            </select>
             <label htmlFor="dispute-reason" className="sr-only">
               Describe the issue
             </label>
@@ -676,11 +738,16 @@ export default function OrderDetailPage() {
               id="dispute-reason"
               value={disputeReason}
               onChange={(e) => setDisputeReason(e.target.value)}
-              placeholder="What happened?"
+              placeholder="What happened? (10–2000 characters)"
               rows={4}
               autoFocus
-              className="w-full px-3 py-2 bg-[var(--background)] border border-[var(--border)] rounded-lg text-sm text-[var(--text)] placeholder:text-[var(--text-subtle)] mb-4 focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)] resize-none"
+              minLength={10}
+              maxLength={2000}
+              className="w-full px-3 py-2 bg-[var(--background)] border border-[var(--border)] rounded-lg text-sm text-[var(--text)] placeholder:text-[var(--text-subtle)] mb-1 focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)] resize-none"
             />
+            <p className="text-xs text-[var(--text-subtle)] mb-4">
+              {disputeReason.trim().length}/2000 characters
+            </p>
             <div className="flex gap-3 justify-end">
               <button
                 type="button"

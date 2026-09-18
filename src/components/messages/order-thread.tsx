@@ -10,11 +10,21 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { toast } from "@/components/ui/toast";
 import { clsx } from "clsx";
 
+/** How long the "typing…" indicator stays visible after the last keystroke. */
+const TYPING_TIMEOUT_MS = 4_000;
+
+/** Signed-URL lifetime (seconds). 5 minutes is plenty for a chat view. */
+const SIGNED_URL_TTL_SECONDS = 60 * 5;
+
 import {
   MessageBubble,
+  type MessageAttachment,
   type MessageBubbleMessage,
 } from "@/components/messages/message-bubble";
-import { MessageComposer } from "@/components/messages/message-composer";
+import {
+  MessageComposer,
+  type ComposerAttachment,
+} from "@/components/messages/message-composer";
 
 export interface OrderThreadProps {
   orderId: string;
@@ -37,14 +47,20 @@ export interface OrderThreadProps {
  * order context + authorize, then render this component.
  *
  * Behavior:
- * - Initial fetch: SELECT messages where order_id = {orderId}, ordered by created_at ASC.
- * - Realtime: subscribe to `postgres_changes INSERT` on `messages` filtered by order_id.
- * - Optimistic send: insert into local state with `_status: "sending"`, send to
- *   Supabase, reconcile by id. Realtime echoes are deduped by id.
+ * - Initial fetch: SELECT messages + their attachments where order_id = {orderId}.
+ * - Attachments are fetched separately and joined client-side; storage paths
+ *   are converted to signed URLs for the current viewer (5 min lifetime).
+ * - Realtime: subscribe to `postgres_changes INSERT` on `messages` filtered by
+ *   order_id. New attachments arrive separately (the parent INSERT brings
+ *   empty attachments; we re-resolve them on the fly so we don't need a
+ *   second realtime subscription).
+ * - Optimistic send: insert into local state with `_status: "sending"`,
+ *   upload each attachment to storage, insert into `message_attachments`,
+ *   reconcile by id. Realtime echoes are deduped by id.
  * - Failed sends: mark `_status: "failed"`, surface a retry button on the bubble.
  *
- * Authorization is enforced by Postgres RLS (see migration 006_messages.sql),
- * not by this component.
+ * Authorization is enforced by Postgres RLS (see migrations 006_messages.sql
+ * and 010_message_attachments.sql), not by this component.
  */
 export function OrderThread({
   orderId,
@@ -61,6 +77,40 @@ export function OrderThread({
 
   const userId = user?.id ?? "";
 
+  // ── Load a single message's attachments as signed URLs ──────────────
+  // We hold off on joining attachments to messages during the initial
+  // fetch so the messages render ASAP (text first, images shortly after).
+  const loadAttachments = useCallback(
+    async (messageIds: string[]): Promise<Map<string, MessageAttachment[]>> => {
+      const out = new Map<string, MessageAttachment[]>();
+      if (messageIds.length === 0) return out;
+      const { data: rows, error } = await supabase
+        .from("message_attachments")
+        .select("id, message_id, storage_path, mime_type, size_bytes")
+        .in("message_id", messageIds);
+      if (error || !rows) return out;
+      // Mint signed URLs in one call per attachment. For a typical chat,
+      // most messages have 0–1 attachments, so this is cheap.
+      for (const row of rows) {
+        const { data: urlData } = await supabase.storage
+          .from("message-attachments")
+          .createSignedUrl(row.storage_path, SIGNED_URL_TTL_SECONDS);
+        const signedUrl = urlData?.signedUrl ?? "";
+        const list = out.get(row.message_id) ?? [];
+        list.push({
+          id: row.id,
+          storage_path: row.storage_path,
+          signedUrl,
+          mime_type: row.mime_type,
+          size_bytes: row.size_bytes,
+        });
+        out.set(row.message_id, list);
+      }
+      return out;
+    },
+    [supabase],
+  );
+
   // ── Initial fetch ──────────────────────────────────────────────────────
   // `loading` starts true via initial state; we intentionally do NOT reset
   // it back to true inside the effect (that triggers a cascading render).
@@ -71,7 +121,7 @@ export function OrderThread({
     (async () => {
       const { data, error } = await supabase
         .from("messages")
-        .select("id, sender_id, body, created_at")
+        .select("id, sender_id, body, created_at, read_at")
         .eq("order_id", orderId)
         .order("created_at", { ascending: true });
       if (cancelled) return;
@@ -80,13 +130,25 @@ export function OrderThread({
         setLoading(false);
         return;
       }
-      setMessages((data ?? []) as MessageBubbleMessage[]);
+      const rows = (data ?? []) as MessageBubbleMessage[];
+      setMessages(rows);
       setLoading(false);
+
+      // Lazily hydrate attachments. We don't block rendering on them.
+      const ids = rows.map((r) => r.id);
+      const map = await loadAttachments(ids);
+      if (cancelled) return;
+      setMessages((prev) =>
+        prev.map((m) => {
+          const atts = map.get(m.id);
+          return atts ? { ...m, attachments: atts } : m;
+        }),
+      );
     })();
     return () => {
       cancelled = true;
     };
-  }, [orderId, supabase]);
+  }, [orderId, supabase, loadAttachments]);
 
   // ── Realtime subscription ──────────────────────────────────────────────
   useEffect(() => {
@@ -100,21 +162,128 @@ export function OrderThread({
           table: "messages",
           filter: `order_id=eq.${orderId}`,
         },
-        (payload) => {
+        async (payload) => {
           const row = payload.new as MessageBubbleMessage;
+          // Dedupe: optimistic echo (same id from our own insert) or
+          // already-appended message (real-time + initial fetch overlap).
           setMessages((prev) => {
-            // Dedupe: optimistic echo (same id from our own insert) or
-            // already-appended message (real-time + initial fetch overlap).
             if (prev.some((m) => m.id === row.id)) return prev;
             return [...prev, row];
           });
+          // Hydrate attachments (if any) for this new message.
+          const map = await loadAttachments([row.id]);
+          if (map.size === 0) return;
+          setMessages((prev) =>
+            prev.map((m) => {
+              if (m.id !== row.id) return m;
+              const atts = map.get(m.id);
+              return atts ? { ...m, attachments: atts } : m;
+            }),
+          );
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "messages",
+          filter: `order_id=eq.${orderId}`,
+        },
+        (payload) => {
+          const row = payload.new as MessageBubbleMessage;
+          setMessages((prev) =>
+            prev.map((m) => (m.id === row.id ? { ...m, ...row } : m))
+          );
         }
       )
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [orderId, supabase]);
+  }, [orderId, supabase, loadAttachments]);
+
+  // ── Typing indicator (ephemeral broadcast) ────────────────────────────
+  // The composer fires `onTyping`; we forward to a presence/broadcast
+  // channel. Incoming pings from the counterpart set `counterpartTyping`.
+  const [counterpartTyping, setCounterpartTyping] = useState(false);
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!userId) return;
+    const channel = supabase.channel(`order:${orderId}:typing`, {
+      config: { broadcast: { self: false, ack: false } },
+    });
+    channel
+      .on("broadcast", { event: "typing" }, (payload) => {
+        // Ignore our own echoes (self: false already filters, but be defensive).
+        if (payload?.payload?.userId === userId) return;
+        setCounterpartTyping(true);
+        if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+        typingTimerRef.current = setTimeout(
+          () => setCounterpartTyping(false),
+          TYPING_TIMEOUT_MS
+        );
+      })
+      .subscribe();
+    return () => {
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+      supabase.removeChannel(channel);
+    };
+  }, [orderId, supabase, userId]);
+
+  const lastTypingBroadcastRef = useRef<number | null>(null);
+  const broadcastTyping = useCallback(() => {
+    if (!userId) return;
+    // Rate-limit: only fire a broadcast at most once every ~2s while the
+    // user is typing. The composer fires onTyping() on every keystroke;
+    // without throttling we'd flood the channel.
+    const now = Date.now();
+    if (
+      lastTypingBroadcastRef.current &&
+      now - lastTypingBroadcastRef.current < 2_000
+    ) {
+      return;
+    }
+    lastTypingBroadcastRef.current = now;
+    const channel = supabase.channel(`order:${orderId}:typing`);
+    void channel.send({
+      type: "broadcast",
+      event: "typing",
+      payload: { userId },
+    });
+  }, [orderId, supabase, userId]);
+
+  // ── Mark unread incoming messages as read on mount and on incoming rows ──
+  // Run once after the initial fetch lands AND whenever a new message arrives
+  // from the counterpart (so we mark it read the moment it shows up).
+  const markRead = useCallback(async () => {
+    if (!userId) return;
+    await supabase
+      .from("messages")
+      .update({ read_at: new Date().toISOString() })
+      .eq("order_id", orderId)
+      .neq("sender_id", userId)
+      .is("read_at", null);
+  }, [orderId, supabase, userId]);
+
+  // Mark on initial load.
+  const initialReadFiredRef = useRef(false);
+  useEffect(() => {
+    if (loading || initialReadFiredRef.current) return;
+    initialReadFiredRef.current = true;
+    void markRead();
+  }, [loading, markRead]);
+
+  // Mark whenever a new incoming message lands.
+  useEffect(() => {
+    if (loading) return;
+    const last = messages[messages.length - 1];
+    if (!last) return;
+    if (last.sender_id === userId) return; // our own message
+    if (last.read_at) return; // already read
+    void markRead();
+  }, [messages, loading, userId, markRead]);
 
   // ── Auto-scroll to bottom when new messages arrive ─────────────────────
   useEffect(() => {
@@ -123,23 +292,38 @@ export function OrderThread({
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [messages.length]);
 
-  // ── Send a message ─────────────────────────────────────────────────────
+  // ── Send a message (text + optional image attachments) ────────────────
   const handleSend = useCallback(
-    async (text: string) => {
+    async (text: string, attachments: ComposerAttachment[]) => {
       if (!user) return;
       const optimisticId = `optimistic-${crypto.randomUUID()}`;
+      const optimisticAttachments: MessageAttachment[] = attachments.map(
+        (a) => ({
+          id: a.localId,
+          storage_path: "",
+          signedUrl: a.previewUrl,
+          mime_type: a.file.type,
+          size_bytes: a.file.size,
+        }),
+      );
       const optimistic: MessageBubbleMessage = {
         id: optimisticId,
         sender_id: user.id,
         body: text,
         created_at: new Date().toISOString(),
         _status: "sending",
+        attachments:
+          optimisticAttachments.length > 0 ? optimisticAttachments : undefined,
       };
       setMessages((prev) => [...prev, optimistic]);
 
       const { data, error } = await supabase
         .from("messages")
-        .insert({ order_id: orderId, sender_id: user.id, body: text })
+        .insert({
+          order_id: orderId,
+          sender_id: user.id,
+          body: text.length > 0 ? text : null,
+        })
         .select("id, sender_id, body, created_at")
         .single();
 
@@ -153,12 +337,91 @@ export function OrderThread({
         return;
       }
 
-      // Reconcile: replace optimistic with the real row from Supabase.
+      const realMessageId = (data as { id: string }).id;
+
+      // Upload attachments serially (not parallel) so a single failure on
+      // a later file doesn't strand earlier ones in storage. We could
+      // parallelize but the cost/benefit doesn't justify the complexity
+      // for max-4 images. The DB rows are inserted only after storage
+      // succeeds, so we never record orphaned DB rows.
+      const uploaded: MessageAttachment[] = [];
+      for (const a of attachments) {
+        const safeName = a.file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const path = `${orderId}/${realMessageId}/${a.localId}-${safeName}`;
+        const { error: upErr } = await supabase.storage
+          .from("message-attachments")
+          .upload(path, a.file, { upsert: false });
+        if (upErr) {
+          toast(`Couldn't upload ${a.file.name}`, "error");
+          // Clean up already-uploaded files so we don't leak storage.
+          for (const prior of uploaded) {
+            await supabase.storage
+              .from("message-attachments")
+              .remove([prior.storage_path]);
+          }
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === optimisticId ? { ...m, _status: "failed" } : m
+            )
+          );
+          return;
+        }
+        const { data: row, error: insErr } = await supabase
+          .from("message_attachments")
+          .insert({
+            message_id: realMessageId,
+            order_id: orderId,
+            storage_path: path,
+            mime_type: a.file.type,
+            size_bytes: a.file.size,
+          })
+          .select("id, storage_path, mime_type, size_bytes")
+          .single();
+        if (insErr || !row) {
+          // Roll back the file we just uploaded.
+          await supabase.storage
+            .from("message-attachments")
+            .remove([path]);
+          for (const prior of uploaded) {
+            await supabase.storage
+              .from("message-attachments")
+              .remove([prior.storage_path]);
+          }
+          toast(`Couldn't save ${a.file.name}`, "error");
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === optimisticId ? { ...m, _status: "failed" } : m
+            )
+          );
+          return;
+        }
+        const { data: urlData } = await supabase.storage
+          .from("message-attachments")
+          .createSignedUrl(row.storage_path, SIGNED_URL_TTL_SECONDS);
+        uploaded.push({
+          id: row.id,
+          storage_path: row.storage_path,
+          signedUrl: urlData?.signedUrl ?? "",
+          mime_type: row.mime_type,
+          size_bytes: row.size_bytes,
+        });
+      }
+
+      // Reconcile: replace optimistic with the real row + real attachments.
       // Realtime will also fire; the dedupe in the subscription handler
       // ensures we don't double-render.
       setMessages((prev) =>
-        prev.map((m) => (m.id === optimisticId ? (data as MessageBubbleMessage) : m))
+        prev.map((m) =>
+          m.id === optimisticId
+            ? ({
+                ...(data as MessageBubbleMessage),
+                attachments: uploaded.length > 0 ? uploaded : undefined,
+              } as MessageBubbleMessage)
+            : m
+        )
       );
+      // Revoke local preview URLs — we now have signed URLs.
+      attachments.forEach((a) => URL.revokeObjectURL(a.previewUrl));
     },
     [orderId, supabase, user]
   );
@@ -176,7 +439,7 @@ export function OrderThread({
         .insert({
           order_id: orderId,
           sender_id: message.sender_id,
-          body: message.body,
+          body: message.body && message.body.length > 0 ? message.body : null,
         })
         .select("id, sender_id, body, created_at")
         .single();
@@ -233,9 +496,16 @@ export function OrderThread({
               Chat with {counterpartName}
             </h1>
             <p className="text-xs text-[var(--text-muted)]">
-              {viewerRole === "customer"
-                ? "Direct line to the seller for this order"
-                : "Direct line to the buyer for this order"}
+              {counterpartTyping ? (
+                <span>
+                  <span className="sr-only">{counterpartName} is typing</span>
+                  typing…
+                </span>
+              ) : viewerRole === "customer" ? (
+                "Direct line to the seller for this order"
+              ) : (
+                "Direct line to the buyer for this order"
+              )}
             </p>
           </div>
         </header>
@@ -270,9 +540,29 @@ export function OrderThread({
               />
             ))
           )}
+
+          {counterpartTyping ? (
+            <div
+              className="flex justify-start"
+              role="status"
+              aria-live="polite"
+              aria-label={`${counterpartName} is typing`}
+            >
+              <div className="rounded-2xl rounded-bl-md px-3.5 py-2 bg-[var(--surface)] border border-[var(--border)] flex items-center gap-1">
+                <span className="sr-only">{counterpartName} is typing</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-muted)] animate-bounce [animation-delay:-0.3s] motion-reduce:animate-none" />
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-muted)] animate-bounce [animation-delay:-0.15s] motion-reduce:animate-none" />
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-muted)] animate-bounce motion-reduce:animate-none" />
+              </div>
+            </div>
+          ) : null}
         </div>
 
-        <MessageComposer onSend={handleSend} disabled={!user} />
+        <MessageComposer
+          onSend={handleSend}
+          disabled={!user}
+          onTyping={broadcastTyping}
+        />
       </section>
 
       {fallback ? (

@@ -20,10 +20,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     .eq("is_sold_out", false)
     .limit(5000);
 
+  // Static pages — public marketing/legal pages that should always be
+  // discoverable. Authenticated-only flows (cart, orders, profile, seller/*,
+  // creator/*) intentionally stay out of the sitemap.
   const staticPages: MetadataRoute.Sitemap = [
+    // Home
     { url: BASE_URL, lastModified: new Date(), changeFrequency: "daily", priority: 1 },
+    // Primary surface
     { url: `${BASE_URL}/feed`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
+    // Onboarding (visible to anon for signup)
     { url: `${BASE_URL}/onboarding`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.3 },
+    // Marketing pages
+    { url: `${BASE_URL}/about`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.5 },
+    { url: `${BASE_URL}/contact`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.4 },
+    { url: `${BASE_URL}/help`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.5 },
+    // Legal pages — important for both SEO and trust signals
+    { url: `${BASE_URL}/privacy`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
+    { url: `${BASE_URL}/terms`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
   ];
 
   const storePages: MetadataRoute.Sitemap = (stores || []).map((store) => ({

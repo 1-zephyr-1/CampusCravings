@@ -11,6 +11,7 @@ import {
   AlertTriangle,
   Shield,
   Activity,
+  Gavel,
 } from "lucide-react";
 import { useAuth } from "@/components/ui/auth-provider";
 import { clsx } from "clsx";
@@ -22,6 +23,7 @@ const navItems = [
   { href: "/creator/listings", label: "Listings", icon: UtensilsCrossed },
   { href: "/creator/categories", label: "Categories", icon: Tag },
   { href: "/creator/reports", label: "Reports", icon: AlertTriangle },
+  { href: "/creator/disputes", label: "Disputes", icon: Gavel },
   { href: "/creator/activity", label: "Activity", icon: Activity },
 ];
 

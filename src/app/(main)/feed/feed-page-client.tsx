@@ -7,6 +7,7 @@ import {
   useRef,
   useMemo,
   useCallback,
+  lazy,
 } from "react";
 import { useSupabase } from "@/lib/supabase/use-client";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -18,7 +19,6 @@ import { SortControl, type SortKey } from "@/components/feed/sort-control";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SectionHeader } from "@/components/ui/section-header";
-import { OnboardingTour } from "@/components/ui/onboarding-tour";
 import {
   Search,
   SlidersHorizontal,
@@ -34,6 +34,19 @@ import { readDietaryPrefs } from "@/lib/recently-viewed";
 import { DIETARY_TAGS } from "@/lib/constants";
 import { ErrorState } from "@/components/ui/error-state";
 import { ErrorBoundary } from "@/components/dev/error-boundary";
+
+/**
+ * Lazy-load the coachmark onboarding tour so it's only fetched after
+ * initial paint and only for first-time users (the component itself
+ * early-returns null when `campuscravings:onboarding-seen` is set in
+ * localStorage). On every revisit the tour is invisible, so we don't
+ * want it in the first-load bundle.
+ */
+const OnboardingTour = lazy(() =>
+  import("@/components/ui/onboarding-tour").then((m) => ({
+    default: m.OnboardingTour,
+  }))
+);
 
 const PAGE_SIZE = 20;
 const STALE_AFTER_MS = 5 * 60 * 1000; // 5 minutes

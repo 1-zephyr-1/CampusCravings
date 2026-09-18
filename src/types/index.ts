@@ -156,3 +156,35 @@ export interface CartStore {
   store: Store;
   items: CartItem[];
 }
+
+export type DisputeCategory =
+  | "not_received"
+  | "quality"
+  | "missing_items"
+  | "seller_unresponsive"
+  | "other";
+
+export type DisputeStatus =
+  | "open"
+  | "reviewing"
+  | "resolved_buyer"
+  | "resolved_seller"
+  | "dismissed";
+
+export interface Dispute {
+  id: string;
+  order_id: string;
+  filed_by: string;
+  against: string;
+  reason: string;
+  category: DisputeCategory;
+  status: DisputeStatus;
+  resolution_notes: string | null;
+  resolved_by: string | null;
+  resolved_at: string | null;
+  created_at: string;
+  updated_at: string;
+  filed_by_profile?: Profile;
+  against_profile?: Profile;
+  resolved_by_profile?: Profile | null;
+}

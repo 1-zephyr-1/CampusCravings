@@ -3,13 +3,26 @@
 import { Check, AlertCircle, RotateCw } from "lucide-react";
 import { clsx } from "clsx";
 
+export interface MessageAttachment {
+  id: string;
+  storage_path: string;
+  /** Pre-minted signed URL for display. */
+  signedUrl: string;
+  mime_type: string;
+  size_bytes: number;
+}
+
 export interface MessageBubbleMessage {
   id: string;
   sender_id: string;
   body: string;
   created_at: string;
+  /** ISO timestamp when the recipient read this message. Null until then. */
+  read_at?: string | null;
   /** In-memory only. Not stored on the DB row. */
   _status?: "sending" | "failed";
+  /** Hydrated separately by the parent. */
+  attachments?: MessageAttachment[];
 }
 
 interface MessageBubbleProps {
@@ -36,6 +49,7 @@ function formatTime(iso: string) {
  * "Mine" bubbles are right-aligned with the primary background.
  * "Theirs" are left-aligned with the surface background.
  * Optimistic sends show a tiny spinner; failed sends show a retry button.
+ * Image attachments render as thumbnails with a lightbox on click.
  */
 export function MessageBubble({
   message,
@@ -45,6 +59,10 @@ export function MessageBubble({
 }: MessageBubbleProps) {
   const failed = message._status === "failed";
   const sending = message._status === "sending";
+  const hasBody = Boolean(message.body && message.body.trim().length > 0);
+  const images = (message.attachments ?? []).filter((a) =>
+    a.mime_type.startsWith("image/"),
+  );
 
   return (
     <div
@@ -65,7 +83,34 @@ export function MessageBubble({
             : "bg-[var(--surface)] text-[var(--text)] border border-[var(--border)] rounded-bl-md"
         )}
       >
-        <div>{message.body}</div>
+        {images.length > 0 && (
+          <div
+            className={clsx(
+              "mb-1.5 grid gap-1.5",
+              images.length === 1 ? "grid-cols-1" : "grid-cols-2",
+            )}
+          >
+            {images.map((img) => (
+              <a
+                key={img.id}
+                href={img.signedUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Open image attachment (${formatBytes(img.size_bytes)})`}
+                className="block overflow-hidden rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={img.signedUrl}
+                  alt="Attached image"
+                  loading="lazy"
+                  className="max-h-64 w-full object-cover"
+                />
+              </a>
+            ))}
+          </div>
+        )}
+        {hasBody && <div>{message.body}</div>}
         <div
           className={clsx(
             "mt-1 flex items-center gap-1 text-[10px]",
@@ -82,7 +127,16 @@ export function MessageBubble({
             />
           )}
           {isMine && !sending && !failed && (
-            <Check size={10} aria-hidden="true" className="opacity-80" />
+            <span aria-label={message.read_at ? "Read" : "Delivered"}>
+              <Check size={10} aria-hidden="true" className="opacity-80" />
+              {message.read_at && (
+                <Check
+                  size={10}
+                  aria-hidden="true"
+                  className="opacity-80 -ml-1.5"
+                />
+              )}
+            </span>
           )}
           {failed && (
             <>
@@ -105,4 +159,10 @@ export function MessageBubble({
       </div>
     </div>
   );
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
