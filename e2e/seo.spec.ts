@@ -27,14 +27,28 @@ test.describe("SEO surface", () => {
     expect(res.status()).toBe(200);
     const body = await res.text();
     expect(body).toContain("<urlset");
-    for (const path of EXPECTED_SITEMAP_URLS) {
-      // Each path should appear as a <loc> entry. We accept the bare path
-      // inside the URL body to avoid coupling to host config. The root path
-      // "/" can never appear inside a `<loc>` token directly, so we use a
-      // regex that matches `<loc>...{path}` instead.
-      const escaped = path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const pattern = new RegExp(`<loc>[^<]*${escaped}(?:</loc>|$)`);
-      expect(body).toMatch(pattern);
+
+    // Pull out every <loc>...</loc> so we don't have to wrangle XML.
+    const locs = Array.from(body.matchAll(/<loc>([^<]+)<\/loc>/g)).map((m) => m[1]);
+    expect(locs.length).toBeGreaterThan(0);
+
+    for (const expectedPath of EXPECTED_SITEMAP_URLS) {
+      // Each expected path should appear somewhere in a <loc>. The root path
+      // "/" shows up as the bare host URL; everything else shows up as the
+      // host followed by the path.
+      const matches = locs.some((loc) => {
+        try {
+          const url = new URL(loc);
+          if (expectedPath === "/") return url.pathname === "/" || url.pathname === "";
+          return url.pathname === expectedPath;
+        } catch {
+          return false;
+        }
+      });
+      expect(
+        matches,
+        `Expected a <loc> with pathname "${expectedPath}" in sitemap, got: ${JSON.stringify(locs)}`
+      ).toBe(true);
     }
   });
 
